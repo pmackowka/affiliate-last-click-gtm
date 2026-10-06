@@ -10,17 +10,9 @@ CREATE TABLE IF NOT EXISTS `your-project.affiliate.orders` (
   shipping         NUMERIC   NOT NULL,
   currency         STRING    NOT NULL,
   is_new_customer  BOOL      NOT NULL,
-  coupon_code      STRING,
+  sales_channel    STRING    NOT NULL,  -- web | app | phone | marketplace | b2b — do atrybucji i puli wchodzi tylko web
   status           STRING    NOT NULL,  -- paid | cancelled | returned | partially_returned
   returned_amount  NUMERIC              -- kwota zwrotu brutto bez wysyłki
-);
-
--- Kody rabatowe przypisane partnerom — atrybucja zamówień bez zgody marketingowej.
-CREATE TABLE IF NOT EXISTS `your-project.affiliate.partner_coupons` (
-  coupon_code  STRING NOT NULL,  -- porównywane bez rozróżniania wielkości liter
-  partner_id   STRING NOT NULL,  -- te same identyfikatory co w `AFF - config` (partner_a…)
-  valid_from   DATE   NOT NULL,
-  valid_to     DATE              -- NULL = bezterminowo
 );
 
 -- Warunki umów. Wersjonowane datami, bo stawki zmieniają się w trakcie współpracy.
@@ -42,7 +34,7 @@ CREATE TABLE IF NOT EXISTS `your-project.affiliate.order_attribution` (
   is_new_customer   BOOL    NOT NULL,
   commission_base   NUMERIC NOT NULL,  -- przychód − wysyłka − zwroty
   partner_id        STRING,            -- NULL = nikt z partnerów
-  method            STRING  NOT NULL,  -- cookie_last_click | cookie_no_partner | coupon | unattributed
+  method            STRING  NOT NULL,  -- cookie_last_click | cookie_no_partner | unattributed | out_of_scope
   decision_reason   STRING,            -- powód z tagu AFF - 03 (gdy była zgoda)
   decision_path     STRING
 )

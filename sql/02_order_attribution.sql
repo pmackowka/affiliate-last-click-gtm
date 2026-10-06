@@ -1,12 +1,12 @@
--- Atrybucja zamówień za okres: łączy backend z decyzjami z GA4 i kodami rabatowymi.
+-- Atrybucja zamówień za okres: łączy backend z decyzjami z GA4.
 -- Idempotentne: kasuje i odbudowuje wiersze okresu. Uruchamiaj po zamknięciu okresu zwrotów.
 --
 -- Hierarchia przypisania (jedno zamówienie = jedna ścieżka, nigdy dwie):
---   1. jest decyzja z tagu (była zgoda ad_storage)  → wynik ciasteczka, także „nikt z partnerów”,
---   2. brak decyzji + kod rabatowy partnera         → partner kodu,
---   3. brak decyzji, brak kodu                      → unattributed (pula do modelu, skrypt 04).
--- Kod rabatowy NIE nadpisuje decyzji ciasteczka: kody przeciekają do serwisów kuponowych,
--- a przy zgodzie ścieżka kliknięć jest lepszym dowodem niż wpisany kod.
+--   1. kanał inny niż web                          → out_of_scope (poza atrybucją i pulą),
+--   2. jest decyzja z tagu (była zgoda ad_storage) → wynik ciasteczka, także „nikt z partnerów”
+--      (w tym no_touchpoints i only_navigational — zgoda była, kliknięcia partnera brak),
+--   3. brak decyzji                                → unattributed (pula do modelu, skrypt 04).
+-- Kody rabatowe nie są metodą przypisania — sklep ich nie używa w programie partnerskim.
 
 DECLARE period_start DATE DEFAULT DATE '2026-09-01';
 DECLARE period_end   DATE DEFAULT DATE '2026-09-30';
@@ -43,16 +43,11 @@ orders AS (
     order_id,
     DATE(order_ts, tz) AS order_date,
     is_new_customer,
-    UPPER(TRIM(coupon_code)) AS coupon_code,
+    sales_channel,
     revenue - shipping - IFNULL(returned_amount, 0) AS commission_base
   FROM `your-project.affiliate.orders`
   WHERE DATE(order_ts, tz) BETWEEN period_start AND period_end
     AND status != 'cancelled'
-),
-
-coupons AS (
-  SELECT UPPER(TRIM(coupon_code)) AS coupon_code, partner_id, valid_from, valid_to
-  FROM `your-project.affiliate.partner_coupons`
 )
 
 SELECT
@@ -60,21 +55,15 @@ SELECT
   o.order_date,
   o.is_new_customer,
   GREATEST(o.commission_base, 0) AS commission_base,
+  IF(o.sales_channel = 'web' AND d.order_id IS NOT NULL, NULLIF(d.winner, 'none'), NULL) AS partner_id,
   CASE
-    WHEN d.order_id IS NOT NULL THEN NULLIF(d.winner, 'none')
-    ELSE c.partner_id
-  END AS partner_id,
-  CASE
+    WHEN o.sales_channel != 'web'                      THEN 'out_of_scope'
     WHEN d.order_id IS NOT NULL AND d.winner != 'none' THEN 'cookie_last_click'
     WHEN d.order_id IS NOT NULL                        THEN 'cookie_no_partner'
-    WHEN c.partner_id IS NOT NULL                      THEN 'coupon'
     ELSE 'unattributed'
   END AS method,
   d.reason AS decision_reason,
   d.path   AS decision_path
 FROM orders o
 LEFT JOIN first_decision d
-  ON d.order_id = o.order_id  -- tag wysyła surowe ID z dataLayer, bez normalizacji
-LEFT JOIN coupons c
-  ON c.coupon_code = o.coupon_code
- AND o.order_date BETWEEN c.valid_from AND IFNULL(c.valid_to, DATE '9999-12-31');
+  ON d.order_id = o.order_id;  -- tag wysyła surowe ID z dataLayer, bez normalizacji

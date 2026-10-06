@@ -10,8 +10,8 @@ SELECT
   order_date,
   COUNT(*) AS orders,
   ROUND(100 * COUNTIF(method IN ('cookie_last_click', 'cookie_no_partner')) / COUNT(*), 1) AS pct_with_decision,
-  ROUND(100 * COUNTIF(method = 'coupon') / COUNT(*), 1)       AS pct_coupon,
-  ROUND(100 * COUNTIF(method = 'unattributed') / COUNT(*), 1) AS pct_unattributed
+  ROUND(100 * COUNTIF(method = 'unattributed') / COUNT(*), 1) AS pct_unattributed,
+  ROUND(100 * COUNTIF(method = 'out_of_scope') / COUNT(*), 1) AS pct_out_of_scope
 FROM `your-project.affiliate.order_attribution`
 WHERE order_date BETWEEN period_start AND period_end
 GROUP BY order_date
@@ -37,16 +37,4 @@ SELECT decision_reason, COUNT(*) AS orders
 FROM `your-project.affiliate.order_attribution`
 WHERE order_date BETWEEN period_start AND period_end
 GROUP BY decision_reason
-ORDER BY orders DESC;
-
--- 4. Konflikty: zamówienie ze zgodą przypisane partnerowi X, ale z kodem rabatowym partnera Y.
---    Nie zmieniają rozliczenia (wygrywa ciasteczko), ale duża liczba = kody wyciekły do serwisów kuponowych.
-SELECT a.partner_id AS cookie_partner, c.partner_id AS coupon_partner, COUNT(*) AS orders
-FROM `your-project.affiliate.order_attribution` a
-JOIN `your-project.affiliate.orders` o USING (order_id)
-JOIN `your-project.affiliate.partner_coupons` c ON UPPER(TRIM(o.coupon_code)) = UPPER(TRIM(c.coupon_code))
-WHERE a.order_date BETWEEN period_start AND period_end
-  AND a.method = 'cookie_last_click'
-  AND a.partner_id != c.partner_id
-GROUP BY 1, 2
 ORDER BY orders DESC;
