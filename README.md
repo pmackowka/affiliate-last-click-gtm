@@ -144,20 +144,23 @@ Mechanizm widzi tylko kliknięcia. Sieć liczącą **post-view** zobowiąż w um
 
 ## Rozliczenia bez zgody
 
-Hierarchia zapisana w umowie z każdym partnerem; jedno zamówienie = jedna metoda:
+Założenie: wysoki odsetek zgód (> 90%), sklep nie przypisuje zamówień kodami rabatowymi. Jedno zamówienie = jedna metoda:
 
-1. **Zgoda** → ciasteczko last click. Kod rabatowy nie nadpisuje decyzji — kody wyciekają do serwisów kuponowych.
-2. **Brak zgody, kod partnera** → kod rabatowy (podaje go klient, nic nie jest zapisywane na urządzeniu).
-3. **Brak zgody, brak kodu** → pula modelowana albo brak prowizji.
+1. **Jest decyzja z tagu** (zgoda przy zakupie) → ciasteczko last click, także „nikt”, gdy ciasteczko było puste.
+2. **Brak decyzji** → pula modelowana albo brak prowizji (wariant w umowie).
+
+Atrybucja i pula obejmują tylko sklep WWW (`orders.sales_channel = 'web'`); aplikacja, telefon, marketplace i B2B są poza rozliczeniem (`out_of_scope`) — udział partnera liczony z WWW nie przenosi się na inne kanały.
 
 ```text
-udział partnera = sprzedaż partnera (ze zgodą) / cała sprzedaż ze zgodą
-prowizja z puli = MIN(udział × sprzedaż bez zgody i kodu × stawka modelowana, limit miesięczny)
+udział partnera = sprzedaż partnera (z decyzją) / cała sprzedaż WWW z decyzją
+prowizja z puli = MIN(udział × sprzedaż WWW bez decyzji × stawka modelowana, limit miesięczny)
 ```
 
-Mianownik obejmuje zamówienia ze zgodą bez zwycięzcy — inaczej pula szłaby w 100% do partnerów.
+Mianownik obejmuje zamówienia z decyzją bez zwycięzcy — inaczej pula szłaby w 100% do partnerów.
 
-**W umowie:** stawka modelowana niższa od podstawowej (50–70%), miesięczny limit, comiesięczny raport udziału zgód, okno i model (last click, post-click) w dniach, kody dedykowane z zakazem publikacji w serwisach kuponowych, zwroty pomniejszają podstawę, podstawa bez wysyłki, pixele sieci tylko przy zgodzie. Prostsza alternatywa: brak prowizji z puli w zamian za wyższą stawkę — przy wysokim odsetku zgód często uczciwsza.
+**W umowie:** stawka modelowana niższa od podstawowej (50–70%), miesięczny limit, comiesięczny raport udziału zgód, okno i model (last click, post-click) w dniach, kody rabatowe nie są podstawą przypisania, zwroty pomniejszają podstawę, podstawa bez wysyłki, pixele sieci tylko przy zgodzie. Przy > 90% zgód pula jest mała — prostsza alternatywa to brak prowizji bez zgody w zamian za wyższą stawkę.
+
+Draft sekcji technicznej umowy: [`docs/contract/zalacznik-techniczny.md`](docs/contract/zalacznik-techniczny.md). Gdzie wdrożyć każdy zapis (GTM, BigQuery): [`docs/contract/wdrozenie-zmian.md`](docs/contract/wdrozenie-zmian.md).
 
 ## BigQuery
 
@@ -165,11 +168,11 @@ Mianownik obejmuje zamówienia ze zgodą bez zwycięzcy — inaczej pula szłaby
 
 | Plik | Co robi |
 |---|---|
-| [`01_tables.sql`](sql/01_tables.sql) | tabele: zamówienia, kody, umowy, wynik atrybucji (raz) |
-| [`02_order_attribution.sql`](sql/02_order_attribution.sql) | przypisanie zamówień okresu: ciasteczko → kod → pula |
+| [`01_tables.sql`](sql/01_tables.sql) | tabele: zamówienia (z kanałem sprzedaży), umowy, wynik atrybucji (raz) |
+| [`02_order_attribution.sql`](sql/02_order_attribution.sql) | przypisanie zamówień okresu: ciasteczko → pula, kanały spoza WWW poza zakresem |
 | [`03_settlement.sql`](sql/03_settlement.sql) | prowizje per partner i metoda |
 | [`04_modelled_share.sql`](sql/04_modelled_share.sql) | podział puli bez zgody z limitem |
-| [`05_qa_checks.sql`](sql/05_qa_checks.sql) | pokrycie, zamówienia bez pary, duplikaty, konflikty kodów |
+| [`05_qa_checks.sql`](sql/05_qa_checks.sql) | pokrycie decyzjami, zamówienia bez pary, rozkład powodów |
 
 Podmień `your-project`, `affiliate`, `analytics_123456789` i daty w `DECLARE`. Zapytania nie były uruchomione na danych — zacznij od dry-runu.
 
@@ -186,6 +189,6 @@ Testy czytają [`gtm/variable-config.js`](gtm/variable-config.js) — ten sam pl
 
 - **Safari (ITP)** skraca życie ciasteczka z JavaScriptu do 7 dni, przy linkach z parametrami śledzącymi do 24 h — część zakupów z oknem 30 dni wypadnie.
 - **Wejście sprzed zgody na innej stronie** niż strona zgody przepada — nie wolno go było zapisać.
-- **Adblockery** blokują pixele, a czasem GTM — zamówienie trafia do metody 2 lub 3.
-- **Aplikacje mobilne** i zakupy telefoniczne są poza zasięgiem.
+- **Adblockery** blokują pixele, a czasem GTM — zamówienie bez decyzji trafia do puli albo bez prowizji.
+- **Aplikacje mobilne**, telefon, marketplace i B2B są poza zasięgiem i poza rozliczeniem (`out_of_scope`).
 - **Następna iteracja: server-side GTM** — ciasteczko z nagłówka HTTP, decyzja i wysyłka do sieci po stronie serwera.

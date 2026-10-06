@@ -1,5 +1,6 @@
--- Pula zamówień bez zgody i bez kodu: podział proporcjonalny do udziału partnera
+-- Pula zamówień bez decyzji (brak zgody) ze sklepu WWW: podział proporcjonalny do udziału partnera
 -- w zamówieniach ZE zgodą, tylko dla umów z `modelled_share_enabled`, z miesięcznym limitem.
+-- Obie strony proporcji pochodzą z tej samej populacji (web) — inne kanały są `out_of_scope` w 02.
 --
 -- Założenie modelu (zapisać w umowie): klienci bez zgody wybierają partnerów w tych samych
 -- proporcjach co klienci ze zgodą. Jeśli jakiś partner sprowadza ruch, który częściej odmawia zgody
