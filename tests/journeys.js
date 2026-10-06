@@ -1,5 +1,5 @@
 // Ścieżki klientów — to samo źródło co tabela w README. Zmiana tutaj = zmiana tabeli.
-// Każdy krok: dzień od pierwszego wejścia + adres wejścia (search) i referrer.
+// Każdy krok: dzień od pierwszego wejścia + adres wejścia (search, opcjonalnie pathname) i referrer.
 // `cookie` = oczekiwana zawartość ciasteczka bez znaczników czasu.
 
 const partner = (name) => ({ search: `?utm_source=${name}&utm_medium=affiliate`, referrer: `https://${name}.example/offer` });
@@ -139,6 +139,33 @@ module.exports = [
     steps: [{ day: 0, ...partner('partner_a') }, { day: 1, search: '?gclid=xyz', referrer: '' }, { day: 3, ...partner('partner_a') }],
     buyDay: 3,
     cookie: 'partner_a|google-ads|partner_a',
+    winner: 'partner_a',
+    reason: 'partner_last_click'
+  },
+  {
+    id: 16,
+    title: 'Partner A → 3DS banku spoza listy (powrót na stronę podziękowania) → zakup',
+    steps: [{ day: 0, ...partner('partner_a') }, { day: 0, pathname: '/dziekujemy', search: '', referrer: 'https://acs.bank-3ds.example/auth' }],
+    buyDay: 0,
+    cookie: 'partner_a',
+    winner: 'partner_a',
+    reason: 'partner_last_click'
+  },
+  {
+    id: 17,
+    title: 'Partner B → link w aplikacji Gmail na Androidzie → zakup',
+    steps: [{ day: 0, ...partner('partner_b') }, { day: 1, search: '', referrer: 'android-app://com.google.android.gm/' }],
+    buyDay: 1,
+    cookie: 'partner_b',
+    winner: 'partner_b',
+    reason: 'partner_last_click'
+  },
+  {
+    id: 18,
+    title: 'Partner A → aplikacja Google na Androidzie (nazwa sklepu) → zakup',
+    steps: [{ day: 0, ...partner('partner_a') }, { day: 2, search: '', referrer: 'android-app://com.google.android.googlequicksearchbox/' }],
+    buyDay: 2,
+    cookie: 'partner_a|organic.google',
     winner: 'partner_a',
     reason: 'partner_last_click'
   }

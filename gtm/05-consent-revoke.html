@@ -1,0 +1,24 @@
+<!--
+  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF - 05 consent revoke`.
+  Wyzwalacze: `AFF - DOM Ready` ORAZ `AFF - consent update`.
+  Ustawienia zgody: BEZ dodatkowej zgody — tag ma działać właśnie wtedy, gdy ad_storage = denied.
+
+  Po odmowie albo wycofaniu zgody kasuje `_aff_path` i `_aff_tx` (Max-Age=0). Kasowanie nie jest
+  przechowywaniem informacji, więc zgody nie wymaga; zostawienie ciasteczek po wycofaniu — tak.
+
+  Stan zgody czytany z komend gtag('consent', 'update', …) w dataLayer. Jeśli CMP ustawia zgodę
+  szablonem GTM (bez komend w dataLayer), funkcja zwróci '' i tag nic nie zrobi — sprawdź w podglądzie
+  i w razie potrzeby zastąp warunek zmienną stanu zgody z CMP.
+-->
+<script>
+(function () {
+  var api = window.affAttribution;
+  var cfg = {{AFF - config}};
+  if (!api || !cfg) return;
+  if (api.consentUpdateState(window.dataLayer, 'ad_storage') !== 'denied') return;
+
+  var https = location.protocol === 'https:';
+  api.writeCookie(document, cfg.cookieName, '', 0, cfg, https);
+  api.writeCookie(document, cfg.txCookieName, '', 0, cfg, https);
+})();
+</script>

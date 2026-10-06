@@ -9,7 +9,7 @@ Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu last
 ## Komendy
 
 ```bash
-npm test        # 15 ścieżek z README + testy jednostkowe, Node ≥ 20, zero zależności
+npm test        # 18 ścieżek z README + testy jednostkowe, Node ≥ 20, zero zależności
 npm run build   # po każdej zmianie src/attribution.js — odbudowuje gtm/01-library.html
 ```
 
@@ -19,7 +19,7 @@ Test pilnuje, że `gtm/01-library.html` jest zgodny z `src/attribution.js` — b
 
 - `src/attribution.js` — jedyne źródło logiki. **ES5** (bez `let`/`const`/strzałek/template stringów), bo ten sam kod trafia do tagu Custom HTML w GTM. Plik nie dotyka `document.cookie` przy ładowaniu — tylko definiuje funkcje.
 - `gtm/variable-config.js` — jedyne miejsce konfiguracji (domena, partnerzy, okna atrybucji, źródła przezroczyste). Testy czytają ten plik, nie kopię.
-- `gtm/0X-*.html` — tagi do wklejenia. Każdy tag czytający lub zapisujący ciasteczko wymaga zgody `ad_storage`.
+- `gtm/0X-*.html` — tagi do wklejenia. Każdy tag czytający lub zapisujący ciasteczko wymaga zgody `ad_storage`; wyjątek: 05 kasuje ciasteczka po wycofaniu zgody i działa bez niej.
 - `tests/journeys.js` — ścieżki klientów; **zmiana tu = zmiana tabeli w README** (sekcja „Ścieżki klientów”), i odwrotnie.
 - `sql/` — BigQuery; placeholdery `your-project`, `affiliate`, `analytics_123456789`. **Zapytania nie były uruchomione na danych** — przy pierwszym użyciu zrób dry-run.
 - Nazwy w przykładach: `partner_a…partner_d`, `retargeting_a` (CPS post-click, w deduplikacji), `retargeting_b` (CPC/CPM, poza deduplikacją), domena `example-shop.pl`.

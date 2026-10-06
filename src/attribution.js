@@ -6,6 +6,7 @@
  *
  * Sam plik niczego nie zapisuje ani nie odczytuje z urządzenia przy ładowaniu — tylko definiuje funkcje.
  * Odczyt i zapis ciasteczka robią tagi 02 i 03, które w GTM wymagają zgody `ad_storage`.
+ * Tag 05 kasuje ciasteczka po odmowie albo wycofaniu zgody.
  *
  * Format ciasteczka: `token~ts|token~ts|…`
  *   token — źródło wejścia, tylko [a-z0-9._-] (bez kodowania, odporne na `;` i `,` z utm_source),
@@ -96,7 +97,9 @@
   }
 
   /*
-   * Klasyfikacja wejścia na stronę. Kolejność = pierwszeństwo:
+   * Klasyfikacja wejścia na stronę. Strony z noCapturePaths (koszyk, płatność, podziękowanie) nie zapisują
+   * niczego — powrót z bramki czy 3DS banku spoza passThroughHosts nie może odebrać sprzedaży partnerowi.
+   * Na pozostałych stronach kolejność = pierwszeństwo:
    *   1. utm_source        — jawne oznaczenie kampanii,
    *   2. identyfikator kliknięcia (gclid, msclkid…) — płatne kliknięcie bez UTM,
    *   3. referrer zewnętrzny, z wyjątkiem źródeł przezroczystych (płatności, banki, poczta),
@@ -104,6 +107,7 @@
    * Zwraca { token, kind } albo null, gdy wejścia nie należy zapisywać.
    */
   function classifyLanding(input, cfg) {
+    if (matchesAny(input.pathname || '', cfg.noCapturePaths)) return null;
     var search = input.search;
     var utm = sanitizeToken(queryParam(search, 'utm_source'));
     if (utm) return { token: utm, kind: 'utm' };
@@ -204,7 +208,26 @@
     return tokens.join('>').slice(0, 100);
   }
 
-  // --- Ciasteczka. Wywoływane wyłącznie z tagów wymagających zgody ad_storage. ---
+  /*
+   * Ostatnia decyzja użytkownika z komend gtag('consent', 'update', {...}) w dataLayer: 'granted', 'denied' albo ''.
+   * Komendy 'default' są pomijane celowo — przed odpowiedzią CMP default to zwykle 'denied',
+   * a skasowanie ciasteczka na tej podstawie wymazałoby ścieżkę klientom, którzy zgodę dali.
+   * '' = brak sygnału (np. CMP ustawia zgodę szablonem GTM, bez komend w dataLayer).
+   */
+  function consentUpdateState(dataLayer, key) {
+    var list = dataLayer || [];
+    var state = '';
+    for (var i = 0; i < list.length; i++) {
+      var e = list[i];
+      if (e && typeof e === 'object' && e[0] === 'consent' && e[1] === 'update' &&
+          e[2] && typeof e[2][key] === 'string') {
+        state = e[2][key];
+      }
+    }
+    return state;
+  }
+
+  // --- Ciasteczka. Odczyt i zapis wyłącznie z tagów wymagających zgody ad_storage; kasowanie (tag 05) bez niej. ---
 
   function readCookie(doc, name) {
     var pairs = String(doc.cookie || '').split(/;\s*/);
@@ -234,6 +257,7 @@
     decideWinner: decideWinner,
     partnerForToken: partnerForToken,
     pathLabel: pathLabel,
+    consentUpdateState: consentUpdateState,
     readCookie: readCookie,
     writeCookie: writeCookie
   };
