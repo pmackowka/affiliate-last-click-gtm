@@ -68,6 +68,25 @@ test('wejścia starsze niż czas życia ciasteczka wypadają przy dopisaniu', ()
   assert.deepEqual(p.map((tp) => tp.t), ['partner_b']);
 });
 
+test('strony z noCapturePaths nie zapisują wejścia, nawet z utm_source', () => {
+  assert.equal(api.classifyLanding({ pathname: '/checkout/platnosc', search: '?utm_source=partner_b', referrer: '' }, cfg), null);
+  assert.deepEqual(api.classifyLanding({ pathname: '/checkout-guide', search: '?utm_source=partner_b', referrer: '' }, cfg),
+    { token: 'partner_b', kind: 'utm' });
+});
+
+test('consentUpdateState czyta ostatnią komendę update i pomija default', () => {
+  const cmd = (...a) => a; // gtag pushuje obiekt arguments — tablica ma ten sam kształt
+  assert.equal(api.consentUpdateState([cmd('consent', 'default', { ad_storage: 'denied' })], 'ad_storage'), '');
+  assert.equal(api.consentUpdateState([
+    cmd('consent', 'default', { ad_storage: 'denied' }),
+    { event: 'gtm.js' },
+    cmd('consent', 'update', { ad_storage: 'granted' }),
+    cmd('consent', 'update', { analytics_storage: 'granted' }),
+    cmd('consent', 'update', { ad_storage: 'denied' })
+  ], 'ad_storage'), 'denied');
+  assert.equal(api.consentUpdateState(undefined, 'ad_storage'), '');
+});
+
 test('uszkodzone ciasteczko nie wywraca parsera', () => {
   assert.deepEqual(api.parsePath('partner_a~|~zz|;;|partner_b~1a2b3c'), [{ t: 'partner_b', ts: parseInt('1a2b3c', 36) }]);
 });

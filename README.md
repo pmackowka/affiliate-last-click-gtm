@@ -1,269 +1,191 @@
 # affiliate-last-click-gtm
 
-Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu **last click**, po stronie klienta w Google Tag Manager, **tylko przy zgodzie marketingowej** (`ad_storage`). Do tego model rozliczeń dla zamówień bez zgody i zapytania BigQuery do comiesięcznego rozliczenia.
+Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu **last click**, po stronie klienta w Google Tag Manager, **tylko przy zgodzie `ad_storage`**. Do tego model rozliczeń zamówień bez zgody i zapytania BigQuery do rozliczenia miesięcznego.
 
-**Problem biznesowy:** klient przed zakupem przechodzi przez kilka sieci afiliacyjnych, porównywarek i reklam retargetingowych. Jeśli każda sieć dostanie pixel zakupu, każda policzy sobie prowizję od tego samego zamówienia, a sklep zapłaci kilka razy za jedną sprzedaż. Mechanizm zapisuje ścieżkę wejść klienta i przy zakupie wysyła pixel **tylko do sieci, która przyprowadziła klienta jako ostatnia**.
-
-## Spis treści
-
-1. [Jak to działa](#jak-to-działa)
-2. [Zgoda i przepisy](#zgoda-i-przepisy)
-3. [Konfiguracja w GTM krok po kroku](#konfiguracja-w-gtm-krok-po-kroku)
-4. [Ścieżki klientów — kto wygrywa](#ścieżki-klientów--kto-wygrywa)
-5. [Retargeting: dwa modele rozliczenia](#retargeting-dwa-modele-rozliczenia)
-6. [Rozliczenia bez zgody marketingowej](#rozliczenia-bez-zgody-marketingowej)
-7. [Raporty rozliczeń w BigQuery](#raporty-rozliczeń-w-bigquery)
-8. [Testy](#testy)
-9. [Ograniczenia i dalsze kroki](#ograniczenia-i-dalsze-kroki)
+**Problem:** klient przed zakupem przechodzi przez kilka sieci afiliacyjnych, porównywarek i reklam. Jeśli każda sieć dostanie pixel zakupu, każda policzy prowizję od tego samego zamówienia. Mechanizm zapisuje ścieżkę wejść i wysyła pixel **tylko do sieci, która przyprowadziła klienta jako ostatnia**.
 
 ## Jak to działa
 
 ```text
-Wejście na stronę ─► klasyfikacja źródła ─► dopisanie do ciasteczka _aff_path      (przy zgodzie)
-                                                     │
-Zakup (purchase) ──────────────────────────► decyzja: kto ostatni? ─► aff_decision w dataLayer
-                                                                          │
-                                                ┌─────────────────────────┼─────────────────────┐
-                                                ▼                         ▼                     ▼
-                                        pixel zwycięzcy          GA4: affiliate_attribution   nikt (inny kanał)
+Wejście ─► klasyfikacja źródła ─► dopisanie do _aff_path                    (przy zgodzie)
+Zakup ───────────────────────────► decyzja: kto ostatni? ─► aff_decision w dataLayer
+                                                              ├─► pixel zwycięzcy
+                                                              └─► GA4: affiliate_attribution
 ```
 
 ### Klasyfikacja wejścia
 
-Każde wejście na stronę z zewnątrz dostaje **token źródła**. Pierwszeństwo:
-
 | # | Sygnał | Token | Przykład |
 |---|---|---|---|
-| 1 | `utm_source` w URL | wartość parametru | `?utm_source=partner_a` → `partner_a` |
+| — | strona z `noCapturePaths` (koszyk, płatność, podziękowanie) | **nic nie zapisujemy** | powrót z bramki lub 3DS banku |
+| 1 | `utm_source` | wartość parametru | `?utm_source=partner_a` → `partner_a` |
 | 2 | identyfikator kliknięcia bez UTM | nazwa z konfiguracji | `?gclid=…` → `google-ads` |
 | 3 | wyszukiwarka organiczna | token nawigacyjny | `google.pl` → `organic.google` |
 | 4 | inny referrer zewnętrzny | domena bez `www.` | `some-blog.example` |
-| — | brak referrera, własna domena | **nic nie zapisujemy** | wpisany adres, nawigacja wewnętrzna |
-| — | źródło przezroczyste | **nic nie zapisujemy** | powrót z PayU, BLIK, banku, Gmaila |
+| — | brak referrera, własna domena | **nic nie zapisujemy** | wpisany adres |
+| — | źródło przezroczyste | **nic nie zapisujemy** | PayU, BLIK, bank, Gmail (web i aplikacja) |
 
-**Źródła przezroczyste** to strony, przez które klient przechodzi w trakcie zakupu albo po nim, a które nie są kanałem marketingowym: bramki płatności, logowanie do banku, poczta webowa. Gdyby trafiły do ścieżki, każdy zakup opłacony przelewem „należałby” do banku.
+Źródła przezroczyste to bramki płatności, banki i poczta — gdyby trafiły do ścieżki, każdy zakup opłacony przelewem „należałby” do banku. `noCapturePaths` to druga linia obrony: listy bramek nigdy nie będą kompletne, a ścieżki checkoutu sklep zna. Referrery `android-app://` (aplikacja Gmail, aplikacja Google) są mapowane jak ich wersje webowe.
 
-### Format ciasteczka
+### Ciasteczko `_aff_path`
 
 ```text
-_aff_path = partner_a~tq4k2o|organic.google~tq5b8c|partner_b~tq6x1d
-            └─token─┘ └czas┘
+partner_a~tq4k2o|organic.google~tq5b8c|partner_b~tq6x1d      token~czas (sekundy, base36)
 ```
 
-- token: tylko `[a-z0-9._-]`, maks. 32 znaki — wartości z `;`, `,` czy spacją nie rozbiją ciasteczka,
-- czas wejścia w sekundach, zapis base36 — potrzebny do okna atrybucji każdego partnera osobno,
-- najwyżej **10 ostatnich wejść**; to samo źródło dwa razy z rzędu odświeża czas zamiast dopisywać element; wejścia starsze niż czas życia ciasteczka wypadają.
-
-W praktyce ciasteczko ma 20–400 znaków i nie rośnie bez końca.
+Token tylko `[a-z0-9._-]`, maks. 32 znaki. Najwyżej 10 wejść; powtórzone źródło odświeża czas; wejścia starsze niż czas życia ciasteczka wypadają.
 
 ### Decyzja przy zakupie
 
-Idziemy od końca ścieżki i **pomijamy wejścia nawigacyjne** (wyszukiwarki organiczne). Pierwsze wejście, które zostanie:
+Od końca ścieżki, z pominięciem wyszukiwarek organicznych (klient kliknął partnera, a potem wrócił, wpisując nazwę sklepu w Google). Pierwsze wejście, które zostanie, rozstrzyga:
 
-| Pierwsze wejście od końca (bez organicznych) | Wynik | Powód (`aff.reason`) |
+| Wejście | Wynik | `aff.reason` |
 |---|---|---|
-| partner z listy, w swoim oknie atrybucji | **partner wygrywa** | `partner_last_click` |
-| partner z listy, po upływie okna | nikt | `partner_window_expired` |
-| źródło spoza listy partnerów (Google Ads, newsletter, blog) | nikt | `non_partner_last_click` |
-| same wejścia organiczne | nikt | `only_navigational` |
-| brak ciasteczka | nikt | `no_touchpoints` |
-| to samo zamówienie drugi raz (odświeżenie strony podziękowania) | nikt | `duplicate_transaction` |
-
-„Nikt” oznacza, że sprzedaż należy do innego kanału albo do wejścia bezpośredniego — żaden partner nie dostaje pixela zakupu.
-
-Dlaczego organiczne wyszukiwanie jest pomijane: klient klika w link partnera, ogląda, wychodzi, a dwa dni później wpisuje nazwę sklepu w Google i kupuje. Google nie sprowadził tego klienta, tylko pomógł mu wrócić.
+| partner w swoim oknie atrybucji | **partner wygrywa** | `partner_last_click` |
+| partner po oknie | nikt (bez cofania do starszego partnera) | `partner_window_expired` |
+| źródło spoza listy partnerów | nikt | `non_partner_last_click` |
+| same organiczne / brak ciasteczka | nikt | `only_navigational` / `no_touchpoints` |
+| to samo zamówienie drugi raz | nikt | `duplicate_transaction` |
 
 ## Zgoda i przepisy
 
-> To opis przyjętych założeń, nie opinia prawna. Brzmienie polityki prywatności i umów z partnerami zatwierdza prawnik sklepu.
+> Opis założeń, nie opinia prawna.
 
-- Zapis i odczyt ciasteczka `_aff_path` to przechowywanie informacji na urządzeniu użytkownika — w Polsce art. 399 Prawa komunikacji elektronicznej (wdrożenie art. 5 ust. 3 dyrektywy ePrivacy). Wyjątek „niezbędne do świadczenia usługi” obejmuje to, czego żąda użytkownik (zakup), a nie rozliczenie prowizji ze sklepem. EDPB w Wytycznych 2/2023 wymienia afiliację jako przykład objęty tym przepisem.
-- Dlatego **wszystkie tagi, które czytają albo zapisują ciasteczko, wymagają zgody `ad_storage`**. Tag biblioteki (01) tylko definiuje funkcje i może działać bez zgody.
-- To samo dotyczy pixeli partnerów i retargetingu **na każdej stronie** (wejście, lista, produkt, koszyk), nie tylko przy zakupie.
-- Przeniesienie logiki na serwer nie zwalnia ze zgody, dopóki identyfikator jest zapisywany albo odczytywany w przeglądarce.
+- Zapis i odczyt `_aff_path` to przechowywanie informacji na urządzeniu — art. 399 PKE (art. 5 ust. 3 ePrivacy). Rozliczenie prowizji nie jest „niezbędne do świadczenia usługi”; EDPB (Wytyczne 2/2023) podaje afiliację jako przykład.
+- Tagi 02 i 03 oraz pixele sieci (na każdej stronie, nie tylko przy zakupie) wymagają `ad_storage`. Tag 01 tylko definiuje funkcje.
+- Po odmowie lub wycofaniu zgody tag 05 kasuje `_aff_path` i `_aff_tx`.
+- Serwer nie zwalnia ze zgody, dopóki identyfikator jest zapisywany w przeglądarce.
 
-## Konfiguracja w GTM krok po kroku
+## Konfiguracja w GTM
 
-### 0. Wymagania
+**Wymagania:** Consent Mode v2 przez CMP (`consent default` przed tagami, `consent update` po decyzji), włączony przegląd zgody w kontenerze, `purchase` w schemacie GA4 (`transaction_id`, `value`, `shipping`, `currency`), stały `utm_source` partnerów zapisany w umowie.
 
-1. **Consent Mode v2** wdrożony przez CMP (Cookiebot, OneTrust, własny baner). Stan `ad_storage` musi być ustawiany *przed* załadowaniem tagów (`consent default`) i aktualizowany po decyzji (`consent update`).
-2. W kontenerze: *Administracja → Ustawienia kontenera → Włącz przegląd zgody*.
-3. Zakup w dataLayer w schemacie GA4: zdarzenie `purchase` z `ecommerce.transaction_id`, `ecommerce.value`, `ecommerce.shipping`, `ecommerce.currency`.
-4. Partnerzy oznaczają linki `utm_source` zgodnym z konfiguracją (`partner_a`, `partner_b`…). To warunek z umowy — bez stałego `utm_source` partner jest rozpoznawalny tylko po referrerze.
-
-### 1. Zmienne
+### Zmienne
 
 | Nazwa | Typ | Ustawienia |
 |---|---|---|
-| `AFF - config` | Niestandardowy kod JavaScript | treść z [`gtm/variable-config.js`](gtm/variable-config.js) — **podmień domenę i listę partnerów** |
-| `DLV - ecommerce.transaction_id` | Zmienna warstwy danych (v2) | `ecommerce.transaction_id` |
-| `DLV - ecommerce.currency` | Zmienna warstwy danych (v2) | `ecommerce.currency` |
-| `DLV - aff.order_id` | Zmienna warstwy danych (v2) | `aff.order_id` |
-| `DLV - aff.winner` | Zmienna warstwy danych (v2) | `aff.winner` |
-| `DLV - aff.reason` | Zmienna warstwy danych (v2) | `aff.reason` |
-| `DLV - aff.touch` | Zmienna warstwy danych (v2) | `aff.touch` |
-| `DLV - aff.path` | Zmienna warstwy danych (v2) | `aff.path` |
-| `JS - order value net of shipping` | Niestandardowy kod JavaScript | `function(){ return Math.round(({{DLV - ecommerce.value}} - ({{DLV - ecommerce.shipping}} \|\| 0)) * 100) / 100; }` — **tylko jeśli `value` w Twoim dataLayer zawiera wysyłkę**; jeśli nie zawiera (częsta praktyka w GA4), użyj samego `ecommerce.value`, inaczej odejmiesz wysyłkę dwa razy |
-| `LT - partner_a event by customer type` | Tabela przeglądowa | wejście: zmienna „nowy klient” z dataLayer → ID zdarzenia w sieci dla nowego / powracającego (jeśli umowa ma różne stawki) |
+| `AFF - config` | Niestandardowy JS | [`gtm/variable-config.js`](gtm/variable-config.js) — **podmień domenę, partnerów i `noCapturePaths`** |
+| `DLV - ecommerce.transaction_id`, `…currency` | Warstwa danych v2 | pola `ecommerce` |
+| `DLV - aff.order_id`, `.winner`, `.reason`, `.touch`, `.path` | Warstwa danych v2 | pola `aff` |
+| `JS - order value net of shipping` | Niestandardowy JS | `value − shipping` — **tylko jeśli `value` zawiera wysyłkę**, inaczej odejmiesz ją dwa razy |
+| `LT - partner_a event by customer type` | Tabela przeglądowa | nowy / powracający klient → ID zdarzenia w sieci |
 
-### 2. Reguły (wyzwalacze)
+### Reguły
 
 | Nazwa | Typ | Warunek |
 |---|---|---|
-| `AFF - Initialization` | Inicjowanie | Wszystkie strony |
-| `AFF - DOM Ready` | DOM gotowy | Wszystkie strony |
-| `AFF - consent update` | Zdarzenie niestandardowe | nazwa zdarzenia, które Twój CMP pushuje po decyzji (np. OneTrust: `OneTrustGroupsUpdated`) — **sprawdź w podglądzie GTM** |
+| `AFF - Initialization` | Inicjowanie | wszystkie strony |
+| `AFF - DOM Ready` | DOM gotowy | wszystkie strony |
+| `AFF - consent update` | Zdarzenie niestandardowe | zdarzenie CMP po decyzji (np. `OneTrustGroupsUpdated`) — sprawdź w podglądzie |
 | `AFF - purchase` | Zdarzenie niestandardowe | `purchase` |
 | `AFF - decision (all)` | Zdarzenie niestandardowe | `aff_decision` |
-| `AFF - winner: partner_a` | Zdarzenie niestandardowe | `aff_decision` **i** `{{DLV - aff.winner}}` równa się `partner_a` |
-| `AFF - winner: …` | jak wyżej | po jednej regule na każdego partnera i Retargeting A |
+| `AFF - winner: partner_a` (po jednej na partnera) | Zdarzenie niestandardowe | `aff_decision` i `{{DLV - aff.winner}}` = `partner_a` |
 
-### 3. Tagi
+### Tagi
 
-| # | Nazwa | Typ | Reguła | Zgoda | Kod |
-|---|---|---|---|---|---|
-| 01 | `AFF - 01 library` | Niestandardowy HTML | `AFF - Initialization` | bez dodatkowej | [`gtm/01-library.html`](gtm/01-library.html) (generowany) |
-| 02 | `AFF - 02 capture touchpoint` | Niestandardowy HTML | `AFF - DOM Ready` **+** `AFF - consent update` | `ad_storage` | [`gtm/02-capture-touchpoint.html`](gtm/02-capture-touchpoint.html) |
-| 03 | `AFF - 03 decide winner` | Niestandardowy HTML | `AFF - purchase` | `ad_storage` | [`gtm/03-decide-winner.html`](gtm/03-decide-winner.html) |
-| — | `Partner A - purchase` (B, C, D, Retargeting A) | pixel sieci | `AFF - winner: partner_a` | `ad_storage` | szkielet: [`gtm/04-partner-purchase-example.html`](gtm/04-partner-purchase-example.html) |
-| — | `Retargeting B - purchase` | pixel sieci | `AFF - purchase` (bez deduplikacji) | `ad_storage` | od sieci |
-| — | `Partner X / Retargeting X - pageview, view_item, add_to_cart` | pixel sieci | zdarzenia lejka | `ad_storage` | od sieci |
-| — | `GA4 - affiliate_attribution` | Zdarzenie GA4 | `AFF - decision (all)` | wbudowana GA4 | parametry niżej |
+| # | Nazwa | Reguła | Zgoda | Kod |
+|---|---|---|---|---|
+| 01 | `AFF - 01 library` | Initialization | bez dodatkowej | [`01-library.html`](gtm/01-library.html) (generowany) |
+| 02 | `AFF - 02 capture touchpoint` | DOM Ready **+** consent update | `ad_storage` | [`02-capture-touchpoint.html`](gtm/02-capture-touchpoint.html) |
+| 03 | `AFF - 03 decide winner` | purchase | `ad_storage` | [`03-decide-winner.html`](gtm/03-decide-winner.html) |
+| 05 | `AFF - 05 consent revoke` | DOM Ready **+** consent update | **bez dodatkowej** | [`05-consent-revoke.html`](gtm/05-consent-revoke.html) |
+| — | `Partner A - purchase` (B, C, D, Retargeting A) | winner: partner_a | `ad_storage` | szkielet: [`04-partner-purchase-example.html`](gtm/04-partner-purchase-example.html) |
+| — | `Retargeting B - purchase` | purchase (bez deduplikacji) | `ad_storage` | od sieci |
+| — | `GA4 - affiliate_attribution` | decision (all) | wbudowana GA4 | parametry `aff_order_id`, `aff_winner`, `aff_reason`, `aff_touch`, `aff_path` |
 
-**Ustawienie zgody w tagu:** *Ustawienia zaawansowane → Ustawienia zgody → Wymagaj dodatkowej zgody na uruchomienie tagu → `ad_storage`*.
+Drugi wyzwalacz tagu 02 łapie wejście z linku partnera, gdy zgoda pada na tej samej stronie — GTM nie odpala wstecz tagu zablokowanego na DOM Ready. Tag 05 czyta stan z komend `gtag('consent', 'update', …)` w dataLayer; jeśli CMP ustawia zgodę szablonem GTM, sprawdź w podglądzie, że tag kasuje ciasteczka.
 
-**Tag GA4 `affiliate_attribution`** — nazwa zdarzenia `affiliate_attribution`, parametry:
+### Test w podglądzie (incognito)
 
-| Parametr | Wartość |
-|---|---|
-| `aff_order_id` | `{{DLV - aff.order_id}}` |
-| `aff_winner` | `{{DLV - aff.winner}}` |
-| `aff_reason` | `{{DLV - aff.reason}}` |
-| `aff_touch` | `{{DLV - aff.touch}}` |
-| `aff_path` | `{{DLV - aff.path}}` |
-
-Wymiary niestandardowe w GA4 nie są potrzebne do rozliczeń — BigQuery czyta parametry z eksportu. Zarejestruj je tylko, jeśli chcesz raporty w interfejsie GA4.
-
-### 4. Test w podglądzie GTM
-
-Dla każdego wiersza wykonaj kroki w trybie incognito (czyste ciasteczka):
-
-1. Wejdź z `?utm_source=partner_a`, **odrzuć zgodę** → tag 02 zablokowany, brak `_aff_path` w *DevTools → Application → Cookies*.
-2. Wejdź z `?utm_source=partner_a`, **zaakceptuj zgodę na tej samej stronie** → tag 02 odpala się na `AFF - consent update`, ciasteczko `partner_a~…`.
-3. Przejdź na drugą stronę sklepu → ciasteczko bez zmian (nawigacja wewnętrzna).
-4. Wejdź z `?utm_source=partner_b` → `partner_a~…|partner_b~…`.
-5. Złóż zamówienie testowe → w dataLayer `aff_decision` z `winner: partner_b`; odpala się tylko `Partner B - purchase`.
-6. Odśwież stronę podziękowania → `aff_decision` z `reason: duplicate_transaction`, żaden pixel partnera.
-7. W GA4 DebugView: zdarzenie `affiliate_attribution` z parametrami.
-
-### 5. Publikacja
-
-Opisz wersję kontenera (np. „AFF last click v1 — deduplikacja partnerów CPS”), opublikuj i po 24–48 h sprawdź raport jakości [`sql/05_qa_checks.sql`](sql/05_qa_checks.sql), zapytanie 1 (pokrycie decyzjami).
+1. `?utm_source=partner_a`, **odrzuć zgodę** → brak `_aff_path`.
+2. `?utm_source=partner_a`, **zaakceptuj na tej samej stronie** → `partner_a~…`.
+3. Kolejna strona sklepu → bez zmian. Potem `?utm_source=partner_b` → `partner_a~…|partner_b~…`.
+4. Zamówienie → `aff_decision` z `winner: partner_b`, odpala się tylko pixel Partnera B.
+5. Odśwież stronę podziękowania → `duplicate_transaction`, żaden pixel.
+6. Wycofaj zgodę w CMP → `_aff_path` i `_aff_tx` znikają.
+7. GA4 DebugView → `affiliate_attribution` z parametrami. Po publikacji sprawdź [`sql/05_qa_checks.sql`](sql/05_qa_checks.sql), zapytanie 1.
 
 ## Ścieżki klientów — kto wygrywa
 
-Konfiguracja przykładowa: Partner A i B (okno 30 dni), Partner C (14 dni), Partner D — porównywarka (7 dni), Retargeting A (CPS post-click, 7 dni). Retargeting B jest rozliczany CPC/CPM i nie bierze udziału w deduplikacji.
+Partner A i B — okno 30 dni, C — 14 dni, D (porównywarka) i Retargeting A (CPS post-click) — 7 dni. Retargeting B (CPC/CPM) jest poza deduplikacją. Wiersze 1–18 to testy w [`tests/journeys.js`](tests/journeys.js); 19–20 sprawdzasz w podglądzie GTM.
 
-Kolumna „ciasteczko” pokazuje tokeny bez znaczników czasu. Wiersze 1–15 są testami w [`tests/journeys.js`](tests/journeys.js); 16 i 17 dzieją się w tagach GTM i sprawdzasz je w podglądzie (krok 4 konfiguracji).
-
-| # | Ścieżka klienta | Ciasteczko `_aff_path` przy zakupie | Kto dostaje pixel zakupu | Dlaczego |
+| # | Ścieżka | `_aff_path` przy zakupie | Pixel zakupu | Dlaczego |
 |---|---|---|---|---|
-| 1 | Partner A → **zakup** | `partner_a` | **Partner A** | jedyne wejście |
-| 2 | Partner A → Partner B → **zakup** | `partner_a\|partner_b` | **Partner B** | ostatni klik |
-| 3 | Partner A → Google organic (nazwa sklepu) → **zakup** | `partner_a\|organic.google` | **Partner A** | organic pomijany |
-| 4 | Partner A → Google → Google → **zakup** | `partner_a\|organic.google` | **Partner A** | powtórzenie nie dopisuje elementu |
-| 5 | Partner B → płatność PayU (powrót) → **zakup** | `partner_b` | **Partner B** | bramka płatności przezroczysta |
-| 6 | Partner A → reklama Google Ads (`gclid`) → **zakup** | `partner_a\|google-ads` | nikt | ostatni klik to płatna wyszukiwarka |
-| 7 | Partner C → newsletter → **zakup** | `partner_c\|newsletter` | nikt | ostatni klik to własny kanał |
-| 8 | Retargeting A (klik w reklamę) → **zakup** | `retargeting_a` | **Retargeting A** | retargeting CPS post-click |
-| 9 | Partner A → Retargeting B (klik) → **zakup** | `partner_a\|retargeting_b` | nikt z partnerów CPS; Retargeting B dostaje swój pixel jak zawsze | Retargeting B poza deduplikacją |
-| 10 | Partner D → 10 dni → wpisany adres → **zakup** | `partner_d` | nikt | okno Partnera D (7 dni) minęło |
-| 11 | Partner A → wpisany adres → **zakup** | `partner_a` | **Partner A** | wejście bezpośrednie nie nadpisuje |
-| 12 | Partner B → link w Gmailu → **zakup** | `partner_b` | **Partner B** | poczta przezroczysta |
-| 13 | Partner A → artykuł na blogu (referral) → **zakup** | `partner_a\|some-blog.example` | nikt | ostatni klik z innej strony |
-| 14 | Porównywarka D bez UTM (referrer) → **zakup** | `comparison-d.example` | **Partner D** | domena przypisana partnerowi w `sources` |
-| 15 | Partner A → Google Ads → Partner A → **zakup** | `partner_a\|google-ads\|partner_a` | **Partner A** | ostatni klik znów u Partnera A |
-| 16 | Partner A → **odmowa zgody** → **zakup** | brak ciasteczka | rozliczenie poza ciasteczkiem | [Rozliczenia bez zgody](#rozliczenia-bez-zgody-marketingowej) |
-| 17 | Partner A → **zakup** → odświeżenie strony podziękowania | `partner_a` | Partner A **raz** | `duplicate_transaction` przy drugim `purchase` |
+| 1 | Partner A → zakup | `partner_a` | **Partner A** | jedyne wejście |
+| 2 | Partner A → Partner B → zakup | `partner_a\|partner_b` | **Partner B** | ostatni klik |
+| 3 | Partner A → Google organic → zakup | `partner_a\|organic.google` | **Partner A** | organic pomijany |
+| 4 | Partner A → Google → Google → zakup | `partner_a\|organic.google` | **Partner A** | powtórzenie nie dopisuje |
+| 5 | Partner B → PayU (powrót) → zakup | `partner_b` | **Partner B** | bramka przezroczysta |
+| 6 | Partner A → Google Ads (`gclid`) → zakup | `partner_a\|google-ads` | nikt | ostatni klik płatny |
+| 7 | Partner C → newsletter → zakup | `partner_c\|newsletter` | nikt | własny kanał |
+| 8 | Retargeting A (klik) → zakup | `retargeting_a` | **Retargeting A** | CPS post-click |
+| 9 | Partner A → Retargeting B (klik) → zakup | `partner_a\|retargeting_b` | nikt z CPS; Retargeting B jak zawsze | B poza deduplikacją |
+| 10 | Partner D → 10 dni → wpisany adres → zakup | `partner_d` | nikt | okno 7 dni minęło |
+| 11 | Partner A → wpisany adres → zakup | `partner_a` | **Partner A** | direct nie nadpisuje |
+| 12 | Partner B → Gmail (web) → zakup | `partner_b` | **Partner B** | poczta przezroczysta |
+| 13 | Partner A → blog (referral) → zakup | `partner_a\|some-blog.example` | nikt | inna strona |
+| 14 | Porównywarka D bez UTM → zakup | `comparison-d.example` | **Partner D** | domena w `sources` |
+| 15 | Partner A → Google Ads → Partner A → zakup | `partner_a\|google-ads\|partner_a` | **Partner A** | ostatni klik |
+| 16 | Partner A → 3DS banku spoza listy → strona podziękowania | `partner_a` | **Partner A** | `noCapturePaths` |
+| 17 | Partner B → aplikacja Gmail (Android) → zakup | `partner_b` | **Partner B** | poczta przezroczysta |
+| 18 | Partner A → aplikacja Google (Android) → zakup | `partner_a\|organic.google` | **Partner A** | organic pomijany |
+| 19 | Partner A → **odmowa zgody** → zakup | brak | rozliczenie bez ciasteczka | sekcja niżej |
+| 20 | Partner A → zakup → odświeżenie podziękowania | `partner_a` | Partner A **raz** | `duplicate_transaction` |
 
-## Retargeting: dwa modele rozliczenia
-
-Retargeting nie jest jednym przypadkiem — zależy od tego, za co płacisz.
+## Retargeting: dwa modele
 
 | | Retargeting A — CPS post-click | Retargeting B — CPC / CPM |
 |---|---|---|
-| Za co płacisz | prowizja od sprzedaży po kliknięciu w reklamę | kliknięcia albo wyświetlenia |
-| W `partners` w konfiguracji | **tak** | **nie** |
-| Pixel zakupu | tylko gdy wygra (`AFF - winner: retargeting_a`) | przy każdym zakupie, potrzebny sieci do optymalizacji kampanii |
-| Pixele lejka (produkt, koszyk) | przy każdej odsłonie, ze zgodą | przy każdej odsłonie, ze zgodą |
-| Ryzyko bez deduplikacji | płacisz za sprzedaż, którą przyprowadził ktoś inny | brak — prowizji nie ma |
+| W `partners` | **tak** | **nie** |
+| Pixel zakupu | tylko gdy wygra | przy każdym zakupie (optymalizacja kampanii) |
+| Ryzyko bez deduplikacji | płacisz za cudzą sprzedaż | brak |
 
-Uwaga na **atrybucję post-view**: część sieci retargetingowych liczy sprzedaż także po samym *wyświetleniu* reklamy. Ten mechanizm rozpoznaje tylko kliknięcia. Jeśli umowa przewiduje post-view, sieć przypisze sobie zamówienia, w których w ciasteczku nie ma jej śladu — zapisz w umowie, że rozliczasz wyłącznie post-click z raportu sklepu.
+Mechanizm widzi tylko kliknięcia. Sieć liczącą **post-view** zobowiąż w umowie do rozliczenia wyłącznie post-click z raportu sklepu.
 
-## Rozliczenia bez zgody marketingowej
+## Rozliczenia bez zgody
 
-Bez zgody nie ma ciasteczka, więc nie ma ścieżki. Zamówienie trzeba rozliczyć inaczej albo wcale. Rekomendacja: **hierarchia trzech metod, zapisana w umowie z każdym partnerem**.
+Hierarchia zapisana w umowie z każdym partnerem; jedno zamówienie = jedna metoda:
 
-| Kolejność | Kiedy | Metoda | Uwagi |
-|---|---|---|---|
-| 1 | klient wyraził zgodę | **ciasteczko last click** (ten mechanizm) | kod rabatowy nie nadpisuje decyzji — kody wyciekają do serwisów kuponowych |
-| 2 | brak zgody, kod rabatowy partnera | **kod rabatowy** | jedyna metoda per zamówienie bez zapisu na urządzeniu — kod podaje klient |
-| 3 | brak zgody, brak kodu | **pula modelowana** albo brak prowizji | udział partnera w puli = jego udział w sprzedaży ze zgodą |
-
-### Pula modelowana — jak liczyć
+1. **Zgoda** → ciasteczko last click. Kod rabatowy nie nadpisuje decyzji — kody wyciekają do serwisów kuponowych.
+2. **Brak zgody, kod partnera** → kod rabatowy (podaje go klient, nic nie jest zapisywane na urządzeniu).
+3. **Brak zgody, brak kodu** → pula modelowana albo brak prowizji.
 
 ```text
-udział partnera   = sprzedaż przypisana partnerowi (ze zgodą) / cała sprzedaż ze zgodą
-podstawa z puli   = udział partnera × sprzedaż bez zgody i bez kodu
-prowizja z puli   = MIN(podstawa z puli × stawka modelowana, miesięczny limit)
+udział partnera = sprzedaż partnera (ze zgodą) / cała sprzedaż ze zgodą
+prowizja z puli = MIN(udział × sprzedaż bez zgody i kodu × stawka modelowana, limit miesięczny)
 ```
 
-Mianownik obejmuje także zamówienia ze zgodą, w których **nie wygrał żaden partner** — inaczej pula zostałaby rozdzielona w 100% między partnerów, choć większość sprzedaży należy do innych kanałów.
+Mianownik obejmuje zamówienia ze zgodą bez zwycięzcy — inaczej pula szłaby w 100% do partnerów.
 
-### Co zapisać w umowie
+**W umowie:** stawka modelowana niższa od podstawowej (50–70%), miesięczny limit, comiesięczny raport udziału zgód, okno i model (last click, post-click) w dniach, kody dedykowane z zakazem publikacji w serwisach kuponowych, zwroty pomniejszają podstawę, podstawa bez wysyłki, pixele sieci tylko przy zgodzie. Prostsza alternatywa: brak prowizji z puli w zamian za wyższą stawkę — przy wysokim odsetku zgód często uczciwsza.
 
-1. **Hierarchia metod** jak wyżej i zasada: jedno zamówienie rozliczane jedną metodą.
-2. **Stawka modelowana niższa niż podstawowa** (np. 50–70% stawki) — model ma błąd, którego żadna strona nie może zweryfikować per zamówienie.
-3. **Miesięczny limit** prowizji z puli.
-4. **Raport udziału zgód** co miesiąc dla partnera — bez niego partner nie ma podstaw ufać puli.
-5. **Okno atrybucji i model** (last click, tylko post-click) — wprost, z liczbą dni.
-6. **Kody rabatowe:** dedykowane per partner, zakaz publikacji w serwisach kuponowych, prawo do odrzucenia zamówień z wyciekłych kodów.
-7. **Zwroty i anulacje** pomniejszają podstawę; termin zamknięcia okresu (np. 30 dni po końcu miesiąca, po upływie terminu zwrotu).
-8. **Podstawa prowizji bez kosztu wysyłki.**
-9. **Pixele sieci tylko przy zgodzie** — sieć nie może wymagać ładowania swoich skryptów bez zgody klienta.
+## BigQuery
 
-Alternatywa prostsza w obsłudze: **brak prowizji za zamówienia bez zgody i bez kodu** w zamian za wyższą stawkę podstawową. Dla sklepu z wysokim odsetkiem zgód (np. >70%) to często uczciwszy układ niż model.
+Źródła: eksport GA4 (`affiliate_attribution`) i tabela zamówień z backendu — prowizji nie liczy się z samego GA4, bo nie zna zwrotów.
 
-## Raporty rozliczeń w BigQuery
+| Plik | Co robi |
+|---|---|
+| [`01_tables.sql`](sql/01_tables.sql) | tabele: zamówienia, kody, umowy, wynik atrybucji (raz) |
+| [`02_order_attribution.sql`](sql/02_order_attribution.sql) | przypisanie zamówień okresu: ciasteczko → kod → pula |
+| [`03_settlement.sql`](sql/03_settlement.sql) | prowizje per partner i metoda |
+| [`04_modelled_share.sql`](sql/04_modelled_share.sql) | podział puli bez zgody z limitem |
+| [`05_qa_checks.sql`](sql/05_qa_checks.sql) | pokrycie, zamówienia bez pary, duplikaty, konflikty kodów |
 
-Źródła danych:
-
-- **eksport GA4 do BigQuery** — zdarzenie `affiliate_attribution` z decyzją dla zamówień ze zgodą,
-- **tabela zamówień z backendu** — przychód, wysyłka, zwroty, anulacje, kod rabatowy, nowy/powracający klient. Prowizji nie liczy się z samego GA4: GA4 nie zna zwrotów i może zgubić część zdarzeń.
-
-| Plik | Co robi | Kiedy |
-|---|---|---|
-| [`sql/01_tables.sql`](sql/01_tables.sql) | tabele: zamówienia, kody partnerów, umowy, wynik atrybucji | raz |
-| [`sql/02_order_attribution.sql`](sql/02_order_attribution.sql) | przypisanie każdego zamówienia z okresu: ciasteczko → kod → pula | po zamknięciu okresu zwrotów |
-| [`sql/03_settlement.sql`](sql/03_settlement.sql) | prowizje per partner i metoda | po 02 |
-| [`sql/04_modelled_share.sql`](sql/04_modelled_share.sql) | podział puli bez zgody z limitem | po 02 |
-| [`sql/05_qa_checks.sql`](sql/05_qa_checks.sql) | pokrycie decyzjami, zamówienia bez pary, duplikaty, konflikty kodów | przed wysłaniem rozliczenia |
-
-W każdym pliku podmień `your-project`, `affiliate` i `analytics_123456789` oraz daty w `DECLARE`.
+Podmień `your-project`, `affiliate`, `analytics_123456789` i daty w `DECLARE`. Zapytania nie były uruchomione na danych — zacznij od dry-runu.
 
 ## Testy
 
 ```bash
-npm test        # 15 ścieżek z tabeli + testy jednostkowe (Node ≥ 20, zero zależności)
+npm test        # 18 ścieżek z tabeli + testy jednostkowe (Node ≥ 20, zero zależności)
 npm run build   # po zmianie src/attribution.js — odbudowuje gtm/01-library.html
 ```
 
-Konfiguracja w testach jest czytana z [`gtm/variable-config.js`](gtm/variable-config.js) — testy sprawdzają ten sam plik, który wklejasz do GTM. Test pilnuje też, że `gtm/01-library.html` jest aktualny względem `src/attribution.js`.
+Testy czytają [`gtm/variable-config.js`](gtm/variable-config.js) — ten sam plik, który wklejasz do GTM — i pilnują, że `01-library.html` jest aktualny.
 
 ## Ograniczenia i dalsze kroki
 
-- **Ciasteczko pierwszej strony ustawiane z JavaScriptu** — Safari (ITP) skraca jego życie do 7 dni, a przy wejściu z linkiem z parametrami śledzącymi nawet do 24 h. Dla partnerów z oknem 30 dni część zakupów z Safari wypadnie. Rozwiązanie: ciasteczko ustawiane przez serwer (następna iteracja: server-side GTM).
-- **Wejście sprzed zgody na innej stronie niż strona zgody przepada** — jeśli klient wszedł z linku partnera, przeszedł na kolejną stronę i dopiero tam zaakceptował zgodę, informacji o wejściu już nie ma (nie wolno jej było zapisać).
-- **Adblockery** blokują część pixeli sieci, a czasem cały GTM — wtedy zamówienie trafia do metody 2 albo 3.
-- **Aplikacje mobilne** i zakupy przez telefon są poza zasięgiem mechanizmu.
-- **Następna iteracja: server-side** — zapis ścieżki w kontenerze serwerowym (ciasteczko HTTP z serwera, dłuższe życie w Safari), decyzja i wysyłka do sieci po stronie serwera, pixele sieci bez skryptów zewnętrznych w przeglądarce.
+- **Safari (ITP)** skraca życie ciasteczka z JavaScriptu do 7 dni, przy linkach z parametrami śledzącymi do 24 h — część zakupów z oknem 30 dni wypadnie.
+- **Wejście sprzed zgody na innej stronie** niż strona zgody przepada — nie wolno go było zapisać.
+- **Adblockery** blokują pixele, a czasem GTM — zamówienie trafia do metody 2 lub 3.
+- **Aplikacje mobilne** i zakupy telefoniczne są poza zasięgiem.
+- **Następna iteracja: server-side GTM** — ciasteczko z nagłówka HTTP, decyzja i wysyłka do sieci po stronie serwera.

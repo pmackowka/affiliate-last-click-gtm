@@ -17,6 +17,10 @@ function () {
     // false = kolejne zakupy w oknie też idą do tego partnera (zależy od umowy).
     clearPathOnPurchase: false,
 
+    // Ścieżki, na których wejście nigdy nie jest zapisywane: koszyk, płatność, powrót z bramki, podziękowanie.
+    // Ochrona przed bramkami i stronami 3DS banków, których nie ma w passThroughHosts. Podmień na ścieżki sklepu.
+    noCapturePaths: ['^/(koszyk|checkout|zamowienie|platnosc|payment)(/|$)', '^/dziekujemy(/|$)'],
+
     // Kliknięcia płatne bez utm_source: parametr URL → token źródła.
     clickIds: {
       gclid: 'google-ads',
@@ -30,19 +34,24 @@ function () {
       // bramki płatności i odroczone płatności
       '(^|\\.)payu\\.com$', '(^|\\.)paypal\\.com$', '(^|\\.)przelewy24\\.pl$', '(^|\\.)tpay\\.com$',
       '(^|\\.)eblik\\.pl$', '(^|\\.)blik\\.com$', '(^|\\.)paypo\\.pl$', '(^|\\.)klarna\\.com$',
-      '(^|\\.)stripe\\.com$', '(^|\\.)adyen\\.com$',
+      '(^|\\.)stripe\\.com$', '(^|\\.)adyen\\.com$', '(^|\\.)autopay\\.(pl|eu)$', '(^|\\.)bm\\.pl$',
+      '(^|\\.)dotpay\\.pl$', '(^|\\.)imoje\\.pl$', '(^|\\.)paynow\\.pl$',
       // bankowość elektroniczna (powrót po autoryzacji przelewu)
       '(^|\\.)ipko\\.pl$', '(^|\\.)pekao24\\.pl$', '(^|\\.)aliorbank\\.pl$', '(^|\\.)mbank\\.pl$',
       '(^|\\.)santander\\.pl$', '(^|\\.)ingbank\\.pl$', '(^|\\.)bankmillennium\\.pl$',
       '(^|\\.)credit-agricole\\.pl$', '(^|\\.)inteligo\\.pl$', '(^|\\.)getinbank\\.pl$',
       // poczta webowa (kliknięcie w link z maila transakcyjnego)
-      '^mail\\.google\\.com$', '^poczta\\.(onet|wp|interia|o2)\\.pl$', '^outlook\\.live\\.com$'
+      '^mail\\.google\\.com$', '^poczta\\.(onet|wp|interia|o2)\\.pl$', '^outlook\\.live\\.com$',
+      // aplikacje pocztowe na Androidzie (referrer android-app://…)
+      '^com\\.google\\.android\\.gm$', '^com\\.microsoft\\.office\\.outlook$'
     ],
 
     // Wyszukiwarki organiczne: zapisywane (do raportu), ale pomijane przy decyzji —
     // po kliknięciu w partnera klient często wraca, wpisując nazwę sklepu w Google.
     navigational: [
       { pattern: '(^|\\.)google\\.[a-z.]{2,6}$', token: 'organic.google' },
+      // aplikacja Google na Androidzie (referrer android-app://com.google.android.googlequicksearchbox)
+      { pattern: '^com\\.google\\.android\\.googlequicksearchbox$', token: 'organic.google' },
       { pattern: '(^|\\.)bing\\.com$', token: 'organic.bing' },
       { pattern: '(^|\\.)duckduckgo\\.com$', token: 'organic.duckduckgo' }
     ],

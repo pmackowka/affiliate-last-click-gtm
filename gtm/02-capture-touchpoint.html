@@ -16,7 +16,7 @@
   if (window.__affTouchCaptured) return;
   window.__affTouchCaptured = true;
 
-  var touch = api.classifyLanding({ search: location.search, referrer: document.referrer }, cfg);
+  var touch = api.classifyLanding({ pathname: location.pathname, search: location.search, referrer: document.referrer }, cfg);
   if (!touch) return;
 
   var now = Math.floor(new Date().getTime() / 1000);
