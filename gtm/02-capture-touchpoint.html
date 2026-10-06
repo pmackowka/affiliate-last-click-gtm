@@ -1,0 +1,28 @@
+<!--
+  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF - 02 capture touchpoint`.
+  Wyzwalacze: `AFF - DOM Ready` ORAZ `AFF - consent update`.
+  Ustawienia zgody: „Wymagaj dodatkowej zgody” → ad_storage.
+
+  Drugi wyzwalacz łapie częsty przypadek: klient wchodzi z linku partnera i dopiero na tej stronie
+  klika „Akceptuję”. GTM nie odpala wstecz tagu zablokowanego na DOM Ready, więc bez wyzwalacza
+  zgody wejście z pierwszej strony przepadłoby.
+-->
+<script>
+(function () {
+  var api = window.affAttribution;
+  var cfg = {{AFF - config}};
+  if (!api || !cfg) return;
+  // Raz na stronę: przy zgodzie udzielonej wcześniej odpalą się oba wyzwalacze.
+  if (window.__affTouchCaptured) return;
+  window.__affTouchCaptured = true;
+
+  var touch = api.classifyLanding({ search: location.search, referrer: document.referrer }, cfg);
+  if (!touch) return;
+
+  var now = Math.floor(new Date().getTime() / 1000);
+  var path = api.parsePath(api.readCookie(document, cfg.cookieName));
+  path = api.appendTouch(path, touch.token, now, cfg);
+  api.writeCookie(document, cfg.cookieName, api.serializePath(path), cfg.cookieMaxAgeDays, cfg,
+    location.protocol === 'https:');
+})();
+</script>

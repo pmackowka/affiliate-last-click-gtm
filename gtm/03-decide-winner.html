@@ -1,0 +1,48 @@
+<!--
+  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF - 03 decide winner`.
+  Wyzwalacz: `AFF - purchase` (zdarzenie niestandardowe `purchase`).
+  Ustawienia zgody: „Wymagaj dodatkowej zgody” → ad_storage.
+
+  Tag nie wysyła niczego do partnerów. Rozstrzyga, kto wygrał, i wypycha wynik do dataLayer
+  jako zdarzenie `aff_decision`. Pixele partnerów nasłuchują na to zdarzenie z warunkiem na zwycięzcę.
+-->
+<script>
+(function () {
+  var api = window.affAttribution;
+  var cfg = {{AFF - config}};
+  var rawOrderId = {{DLV - ecommerce.transaction_id}};
+  // Surowe ID idzie do dataLayer (łączenie z backendem w BigQuery), znormalizowane — tylko do ciasteczka.
+  var orderKey = api ? api.sanitizeToken(rawOrderId) : '';
+  if (!api || !cfg || !orderKey) return;
+
+  var https = location.protocol === 'https:';
+  var now = Math.floor(new Date().getTime() / 1000);
+  var path = api.parsePath(api.readCookie(document, cfg.cookieName));
+  var decision;
+
+  // Odświeżenie strony podziękowania albo powrót z bramki płatności pushuje `purchase` drugi raz.
+  // Zamiast blokować wybrane referrery, pamiętamy ostatnie zgłoszone zamówienie.
+  if (api.readCookie(document, cfg.txCookieName) === orderKey) {
+    decision = { winner: null, reason: 'duplicate_transaction', touch: '' };
+  } else {
+    decision = api.decideWinner(path, now, cfg);
+    api.writeCookie(document, cfg.txCookieName, orderKey, cfg.cookieMaxAgeDays, cfg, https);
+    if (decision.winner && cfg.clearPathOnPurchase) {
+      api.writeCookie(document, cfg.cookieName, '', 0, cfg, https);
+    }
+  }
+
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({
+    event: 'aff_decision',
+    aff: {
+      order_id: String(rawOrderId),
+      winner: decision.winner || 'none',
+      reason: decision.reason,
+      touch: decision.touch,
+      path: api.pathLabel(path),
+      path_length: path.length
+    }
+  });
+})();
+</script>
