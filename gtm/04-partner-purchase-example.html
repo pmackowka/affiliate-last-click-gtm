@@ -1,0 +1,23 @@
+<!--
+  GTM → Tag „Niestandardowy kod HTML”, nazwa: `Partner A - purchase` (analogicznie B, C, D, Retargeting A).
+  Wyzwalacz: `AFF - winner: partner_a` = zdarzenie `aff_decision` + `{{DLV - aff.winner}}` równa się `partner_a`.
+  Ustawienia zgody: „Wymagaj dodatkowej zgody” → ad_storage.
+
+  Kod pixela dostarcza sieć — poniżej szkielet z typowymi polami. Trzy decyzje rozliczeniowe
+  warto zapisać tu jawnie, bo wynikają z umowy, nie z dokumentacji sieci:
+    - podstawa prowizji bez kosztu wysyłki,
+    - osobna stawka dla nowego i powracającego klienta (osobny identyfikator zdarzenia w sieci),
+    - ID zamówienia zawsze — sieć deduplikuje po nim i uzgadnia zwroty.
+-->
+<script>
+(function () {
+  var s = document.createElement('script');
+  s.src = 'https://tracking.partner-a.example/conversion.js';
+  s.async = true;
+  s.setAttribute('data-order-id', {{DLV - aff.order_id}});
+  s.setAttribute('data-amount', {{JS - order value net of shipping}});
+  s.setAttribute('data-currency', {{DLV - ecommerce.currency}});
+  s.setAttribute('data-event', {{LT - partner_a event by customer type}});
+  document.body.appendChild(s);
+})();
+</script>

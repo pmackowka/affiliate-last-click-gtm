@@ -1,0 +1,13 @@
+{
+  "name": "affiliate-last-click-gtm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Deduplikacja konwersji partnerów CPS w modelu last click, po stronie klienta w GTM, ze zgodą ad_storage.",
+  "scripts": {
+    "build": "node scripts/build-gtm.mjs",
+    "test": "node --test \"tests/**/*.test.js\""
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
