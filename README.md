@@ -1,6 +1,6 @@
 # affiliate-last-click-gtm
 
-Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu **last click**, po stronie klienta w Google Tag Manager, **tylko przy zgodzie `ad_storage`**. Do tego model rozliczeń zamówień bez zgody i zapytania BigQuery do rozliczenia miesięcznego.
+Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu **last click**, po stronie klienta w Google Tag Manager, **tylko przy zgodzie `ad_storage`**. Do tego zapytania BigQuery do rozliczenia miesięcznego, draft załącznika do umowy i scenariusze testów.
 
 **Problem:** klient przed zakupem przechodzi przez kilka sieci afiliacyjnych, porównywarek i reklam. Jeśli każda sieć dostanie pixel zakupu, każda policzy prowizję od tego samego zamówienia. Mechanizm zapisuje ścieżkę wejść i wysyła pixel **tylko do sieci, która przyprowadziła klienta jako ostatnia**.
 
@@ -52,8 +52,7 @@ Od końca ścieżki, z pominięciem wyszukiwarek organicznych (klient kliknął 
 > Opis założeń, nie opinia prawna.
 
 - Zapis i odczyt `_aff_path` to przechowywanie informacji na urządzeniu — art. 399 PKE (art. 5 ust. 3 ePrivacy). Rozliczenie prowizji nie jest „niezbędne do świadczenia usługi”; EDPB (Wytyczne 2/2023) podaje afiliację jako przykład.
-- Tagi 02 i 03 oraz pixele sieci (na każdej stronie, nie tylko przy zakupie) wymagają `ad_storage`. Tag 01 tylko definiuje funkcje.
-- Po odmowie lub wycofaniu zgody tag 05 kasuje `_aff_path` i `_aff_tx`.
+- Wszystko, co czyta lub zapisuje ciasteczko, oraz pixele sieci wymagają `ad_storage`; tag 05 kasuje ciasteczka po odmowie lub wycofaniu zgody.
 - Serwer nie zwalnia ze zgody, dopóki identyfikator jest zapisywany w przeglądarce.
 
 ## Architektura kontenera
@@ -91,7 +90,7 @@ Poza GTM
 └── BigQuery: partner_contracts [N] stawki partnera od daty obowiązywania
 ```
 
-Przepływ: `01` ładuje funkcje → `02` zapisuje wejścia → `03` przy zakupie decyduje → `04x` odpala pixel tylko zwycięzcy, `06` wysyła decyzję do GA4. Szczegóły kroków dla nowego partnera: sekcja „Nowy partner” niżej.
+Przepływ: `01` ładuje funkcje → `02` zapisuje wejścia → `03` przy zakupie decyduje → `04x` odpala pixel tylko zwycięzcy, `06` wysyła decyzję do GA4.
 
 ## Konfiguracja w GTM
 
@@ -134,29 +133,13 @@ Reguły inicjowania i `purchase` mogą być istniejącymi regułami sklepu — l
 
 Bez tagu 06 decyzje nie trafią do eksportu GA4, a zapytania z `sql/` nie mają danych.
 
-**Nowy partner** — bez zmian w kodzie, tagi 01–03, 05, 06 i SQL zostają:
-
-1. `AFF 00 - config` → wpis w `partners`: `sources` (wartość `utm_source` z umowy, opcjonalnie hosty porównywarki) i `windowDays` (okno z umowy). Okno dłuższe niż `cookieMaxAgeDays` → podnieś `cookieMaxAgeDays`.
-2. Wyzwalacz `AFF 04 - winner = <id>`.
-3. Tag pixela `AFF 04x - <Partner> - purchase` z wyzwalaczem z kroku 2, zgoda `ad_storage`, ID zamówienia z `{{AFF 04 - aff.order_id}}`.
-4. BigQuery: wiersz w `partner_contracts` (stawki, `valid_from`).
-5. Podgląd: wejście z `?utm_source=<id>` i zakup → odpala się tylko nowy pixel.
-
-Zasada drugiego zakupu (`clearPathOnPurchase: false` — kolejny zakup w oknie idzie do partnera) jest wspólna dla wszystkich partnerów. Pełna mapa zapis umowy → zmiana: [`docs/contract/wdrozenie-zmian.md`](docs/contract/wdrozenie-zmian.md).
+**Nowy partner** = 4 miejsca oznaczone `[N]` w [architekturze](#architektura-kontenera), bez zmian w kodzie. Kroki, nazwy i ustawienia: [`docs/contract/wdrozenie-zmian.md`](docs/contract/wdrozenie-zmian.md).
 
 Drugi wyzwalacz tagu 02 łapie wejście z linku partnera, gdy zgoda pada na tej samej stronie — GTM nie odpala wstecz tagu zablokowanego na DOM Ready. Tag 05 czyta stan z komend `gtag('consent', 'update', …)` w dataLayer; jeśli CMP ustawia zgodę szablonem GTM, sprawdź w podglądzie, że tag kasuje ciasteczka.
 
-### Test w podglądzie (incognito)
+### Test w podglądzie
 
-Pełny zestaw scenariuszy z gotowymi adresami i wynikiem oczekiwanym: [`docs/testy-podglad-gtm.md`](docs/testy-podglad-gtm.md).
-
-1. `?utm_source=partner_a`, **odrzuć zgodę** → brak `_aff_path`.
-2. `?utm_source=partner_a`, **zaakceptuj na tej samej stronie** → `partner_a~…`.
-3. Kolejna strona sklepu → bez zmian. Potem `?utm_source=partner_b` → `partner_a~…|partner_b~…`.
-4. Zamówienie → `aff_decision` z `winner: partner_b`, odpala się tylko pixel Partnera B.
-5. Odśwież stronę podziękowania → `duplicate_transaction`, żaden pixel.
-6. Wycofaj zgodę w CMP → `_aff_path` i `_aff_tx` znikają.
-7. GA4 DebugView → `affiliate_attribution` z parametrami. Po publikacji sprawdź [`sql/05_qa_checks.sql`](sql/05_qa_checks.sql), zapytanie 1.
+Scenariusze z gotowymi adresami i wynikiem oczekiwanym: [`docs/testy-podglad-gtm.md`](docs/testy-podglad-gtm.md). Po publikacji: [`sql/05_qa_checks.sql`](sql/05_qa_checks.sql), zapytanie 1.
 
 ## Retargeting: dwa modele
 
@@ -166,17 +149,11 @@ Pełny zestaw scenariuszy z gotowymi adresami i wynikiem oczekiwanym: [`docs/tes
 | Pixel zakupu | tylko gdy wygra | przy każdym zakupie (optymalizacja kampanii) |
 | Ryzyko bez deduplikacji | płacisz za cudzą sprzedaż | brak |
 
-Mechanizm widzi tylko kliknięcia. Sieć liczącą **post-view** zobowiąż w umowie do rozliczenia wyłącznie post-click z raportu sklepu.
+Mechanizm widzi tylko kliknięcia — rozliczenie post-view wyklucza załącznik (§3 ust. 1).
 
-## Rozliczenia bez zgody
+## Rozliczenia i umowa
 
-Założenie: wysoki odsetek zgód (> 90%). Prowizja przysługuje tylko za zamówienia z decyzją tagu, która wskazuje partnera. Zamówienie bez zgody (brak decyzji) = brak prowizji; rekompensuje to stawka podstawowa w umowie. Kody rabatowe nie przypisują zamówień.
-
-Atrybucja obejmuje tylko sklep WWW (`orders.sales_channel = 'web'`); aplikacja, telefon, marketplace i B2B są poza rozliczeniem (`out_of_scope`).
-
-**W umowie:** okno i model (last click, post-click) w dniach, zakaz cookie stuffingu i brand biddingu, podstawa bez wysyłki pomniejszona o zwroty, pixele sieci tylko przy zgodzie, brak prowizji bez decyzji atrybucji.
-
-Draft sekcji technicznej umowy: [`docs/contract/zalacznik-techniczny.md`](docs/contract/zalacznik-techniczny.md). Gdzie wdrożyć każdy zapis (GTM, BigQuery): [`docs/contract/wdrozenie-zmian.md`](docs/contract/wdrozenie-zmian.md).
+Prowizja tylko za zamówienia z decyzją tagu wskazującą partnera; bez zgody nie ma decyzji ani prowizji (rekompensuje to stawka podstawowa), kody rabatowe nie przypisują zamówień. Warunki dla partnera: [`docs/contract/zalacznik-techniczny.md`](docs/contract/zalacznik-techniczny.md); gdzie je wdrożyć: [`docs/contract/wdrozenie-zmian.md`](docs/contract/wdrozenie-zmian.md).
 
 ## BigQuery
 
@@ -200,10 +177,7 @@ npm run build   # po zmianie src/attribution.js — odbudowuje gtm/01-library.ht
 
 Testy czytają [`gtm/variable-config.js`](gtm/variable-config.js) — ten sam plik, który wklejasz do GTM — i pilnują, że `01-library.html` jest aktualny.
 
-**Kto wygrywa w jakiej ścieżce:**
-
-- automatycznie — [`tests/journeys.js`](tests/journeys.js): 18 ścieżek, każda z opisem, oczekiwanym ciasteczkiem i zwycięzcą (m.in. powroty z bramek płatności, banków i poczty, których nie da się odtworzyć ręcznie),
-- ręcznie w Podglądzie GTM — [`docs/testy-podglad-gtm.md`](docs/testy-podglad-gtm.md): gotowe adresy i wynik oczekiwany dla sieci afiliacyjnych, retargetingu, zgody i okien atrybucji.
+Kto wygrywa w jakiej ścieżce: [`tests/journeys.js`](tests/journeys.js) (18 ścieżek, także powroty z bramek, banków i poczty, których nie odtworzysz ręcznie).
 
 ## Ograniczenia i dalsze kroki
 
