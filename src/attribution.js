@@ -160,12 +160,18 @@
    *   - elementy starsze niż cookieMaxAgeDays wypadają,
    *   - zostaje najwyżej maxTouchpoints ostatnich elementów.
    */
-  function appendTouch(path, token, now, cfg) {
+  // Wejścia starsze niż cookieMaxAgeDays wypadają (minimalizacja danych).
+  function prunePath(path, now, cfg) {
     var maxAge = (cfg.cookieMaxAgeDays || 90) * DAY;
     var out = [];
     for (var i = 0; i < path.length; i++) {
       if (now - path[i].ts <= maxAge) out.push(path[i]);
     }
+    return out;
+  }
+
+  function appendTouch(path, token, now, cfg) {
+    var out = prunePath(path, now, cfg);
     var last = out[out.length - 1];
     if (last && last.t === token) {
       out[out.length - 1] = { t: token, ts: now };
@@ -253,6 +259,7 @@
     classifyLanding: classifyLanding,
     parsePath: parsePath,
     serializePath: serializePath,
+    prunePath: prunePath,
     appendTouch: appendTouch,
     decideWinner: decideWinner,
     partnerForToken: partnerForToken,
