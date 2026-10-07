@@ -158,33 +158,6 @@ Pełny zestaw scenariuszy z gotowymi adresami i wynikiem oczekiwanym: [`docs/tes
 6. Wycofaj zgodę w CMP → `_aff_path` i `_aff_tx` znikają.
 7. GA4 DebugView → `affiliate_attribution` z parametrami. Po publikacji sprawdź [`sql/05_qa_checks.sql`](sql/05_qa_checks.sql), zapytanie 1.
 
-## Ścieżki klientów — kto wygrywa
-
-Partner A i B — okno 30 dni, C — 14 dni, D (porównywarka) i Retargeting A (CPS post-click) — 7 dni. Retargeting B (CPC/CPM) jest poza deduplikacją. Wiersze 1–18 to testy w [`tests/journeys.js`](tests/journeys.js); 19–20 sprawdzasz w podglądzie GTM.
-
-| # | Ścieżka | `_aff_path` przy zakupie | Pixel zakupu | Dlaczego |
-|---|---|---|---|---|
-| 1 | Partner A → zakup | `partner_a` | **Partner A** | jedyne wejście |
-| 2 | Partner A → Partner B → zakup | `partner_a\|partner_b` | **Partner B** | ostatni klik |
-| 3 | Partner A → Google organic → zakup | `partner_a\|organic.google` | **Partner A** | organic pomijany |
-| 4 | Partner A → Google → Google → zakup | `partner_a\|organic.google` | **Partner A** | powtórzenie nie dopisuje |
-| 5 | Partner B → PayU (powrót) → zakup | `partner_b` | **Partner B** | bramka przezroczysta |
-| 6 | Partner A → Google Ads (`gclid`) → zakup | `partner_a\|google-ads` | nikt | ostatni klik płatny |
-| 7 | Partner C → newsletter → zakup | `partner_c\|newsletter` | nikt | własny kanał |
-| 8 | Retargeting A (klik) → zakup | `retargeting_a` | **Retargeting A** | CPS post-click |
-| 9 | Partner A → Retargeting B (klik) → zakup | `partner_a\|retargeting_b` | nikt z CPS; Retargeting B jak zawsze | B poza deduplikacją |
-| 10 | Partner D → 10 dni → wpisany adres → zakup | `partner_d` | nikt | okno 7 dni minęło |
-| 11 | Partner A → wpisany adres → zakup | `partner_a` | **Partner A** | direct nie nadpisuje |
-| 12 | Partner B → Gmail (web) → zakup | `partner_b` | **Partner B** | poczta przezroczysta |
-| 13 | Partner A → blog (referral) → zakup | `partner_a\|some-blog.example` | nikt | inna strona |
-| 14 | Porównywarka D bez UTM → zakup | `comparison-d.example` | **Partner D** | domena w `sources` |
-| 15 | Partner A → Google Ads → Partner A → zakup | `partner_a\|google-ads\|partner_a` | **Partner A** | ostatni klik |
-| 16 | Partner A → 3DS banku spoza listy → strona podziękowania | `partner_a` | **Partner A** | `noCapturePaths` |
-| 17 | Partner B → aplikacja Gmail (Android) → zakup | `partner_b` | **Partner B** | poczta przezroczysta |
-| 18 | Partner A → aplikacja Google (Android) → zakup | `partner_a\|organic.google` | **Partner A** | organic pomijany |
-| 19 | Partner A → **odmowa zgody** → zakup | brak | rozliczenie bez ciasteczka | sekcja niżej |
-| 20 | Partner A → zakup → odświeżenie podziękowania | `partner_a` | Partner A **raz** | `duplicate_transaction` |
-
 ## Retargeting: dwa modele
 
 | | Retargeting A — CPS post-click | Retargeting B — CPC / CPM |
@@ -221,11 +194,16 @@ Podmień `your-project`, `affiliate`, `analytics_123456789` i daty w `DECLARE`. 
 ## Testy
 
 ```bash
-npm test        # 18 ścieżek z tabeli + testy jednostkowe (Node ≥ 20, zero zależności)
+npm test        # 18 ścieżek klientów + testy jednostkowe (Node ≥ 20, zero zależności)
 npm run build   # po zmianie src/attribution.js — odbudowuje gtm/01-library.html
 ```
 
 Testy czytają [`gtm/variable-config.js`](gtm/variable-config.js) — ten sam plik, który wklejasz do GTM — i pilnują, że `01-library.html` jest aktualny.
+
+**Kto wygrywa w jakiej ścieżce:**
+
+- automatycznie — [`tests/journeys.js`](tests/journeys.js): 18 ścieżek, każda z opisem, oczekiwanym ciasteczkiem i zwycięzcą (m.in. powroty z bramek płatności, banków i poczty, których nie da się odtworzyć ręcznie),
+- ręcznie w Podglądzie GTM — [`docs/testy-podglad-gtm.md`](docs/testy-podglad-gtm.md): gotowe adresy i wynik oczekiwany dla sieci afiliacyjnych, retargetingu, zgody i okien atrybucji.
 
 ## Ograniczenia i dalsze kroki
 
