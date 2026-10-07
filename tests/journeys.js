@@ -1,4 +1,4 @@
-// Ścieżki klientów — to samo źródło co tabela w README. Zmiana tutaj = zmiana tabeli.
+// Ścieżki klientów — jedyne źródło (README linkuje tutaj). Zmiana logiki = sprawdź też docs/testy-podglad-gtm.md.
 // Każdy krok: dzień od pierwszego wejścia + adres wejścia (search, opcjonalnie pathname) i referrer.
 // `cookie` = oczekiwana zawartość ciasteczka bez znaczników czasu.
 
