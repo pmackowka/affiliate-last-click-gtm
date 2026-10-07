@@ -56,6 +56,43 @@ Od końca ścieżki, z pominięciem wyszukiwarek organicznych (klient kliknął 
 - Po odmowie lub wycofaniu zgody tag 05 kasuje `_aff_path` i `_aff_tx`.
 - Serwer nie zwalnia ze zgody, dopóki identyfikator jest zapisywany w przeglądarce.
 
+## Architektura kontenera
+
+Folder w GTM: „AFF — deduplikacja CPS (last click)”. `[N]` = tu wprowadzasz zmiany przy nowym partnerze.
+
+```text
+Zmienne
+├── AFF 00 - config [N]            konfiguracja całego mechanizmu: partnerzy (utm_source, okno), domena, wyjątki
+├── AFF 04 - aff.order_id          ID zamówienia z decyzji — dla pixeli sieci i GA4
+├── AFF 04 - aff.winner            zwycięzca decyzji — warunek wyzwalaczy „winner = …”
+├── AFF 04 - aff.reason            powód decyzji (np. partner_last_click) — do GA4
+├── AFF 04 - aff.touch             wejście, które rozstrzygnęło — do GA4
+└── AFF 04 - aff.path              ścieżka wejść klienta — do GA4
+
+Wyzwalacze
+├── AFF 01 - Initialization        start strony, przed innymi tagami
+├── AFF 02 - DOM Ready             każda odsłona
+├── AFF 02 - consent update        decyzja klienta w banerze zgód
+├── AFF 03 - purchase              zakup w dataLayer
+├── AFF 04 - winner = partner_a    decyzja wskazała Partnera A (po jednym na partnera)
+├── AFF 04 - winner = <id> [N]     nowy partner: kopia wyzwalacza z jego identyfikatorem
+└── AFF 06 - aff_decision          każda decyzja, także „nikt”
+
+Tagi
+├── AFF 01 - library               definiuje funkcje mechanizmu, niczego nie zapisuje (bez zgody)
+├── AFF 02 - capture touchpoint    zapisuje wejście klienta do ciasteczka _aff_path (ad_storage)
+├── AFF 03 - decide winner         przy zakupie wybiera zwycięzcę i wysyła aff_decision (ad_storage)
+├── AFF 04a - Partner A - purchase pixel zakupu sieci, tylko gdy wygrała (ad_storage)
+├── AFF 04x - <Partner> [N]        nowy partner: kod pixela od sieci + wyzwalacz „winner = <id>”
+├── AFF 05 - consent revoke        kasuje ciasteczka po odmowie lub wycofaniu zgody (bez zgody)
+└── AFF 06 - GA4 affiliate_attribution  każda decyzja do GA4 → BigQuery → rozliczenie
+
+Poza GTM
+└── BigQuery: partner_contracts [N] stawki partnera od daty obowiązywania
+```
+
+Przepływ: `01` ładuje funkcje → `02` zapisuje wejścia → `03` przy zakupie decyduje → `04x` odpala pixel tylko zwycięzcy, `06` wysyła decyzję do GA4. Szczegóły kroków dla nowego partnera: sekcja „Nowy partner” niżej.
+
 ## Konfiguracja w GTM
 
 **Wymagania:** Consent Mode v2 przez CMP (`consent default` przed tagami, `consent update` po decyzji), włączony przegląd zgody w kontenerze, `purchase` w schemacie GA4 (`transaction_id`, `value`, `shipping`, `currency`), stały `utm_source` partnerów zapisany w umowie.
