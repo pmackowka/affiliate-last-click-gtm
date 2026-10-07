@@ -1,15 +1,16 @@
 <!--
-  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF - 03 decide winner`.
-  Wyzwalacz: `AFF - purchase` (zdarzenie niestandardowe `purchase`).
+  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF 03 - decide winner`.
+  Wyzwalacz: `AFF 03 - purchase` (zdarzenie niestandardowe `purchase`).
   Ustawienia zgody: „Wymagaj dodatkowej zgody” → ad_storage.
 
   Tag nie wysyła niczego do partnerów. Rozstrzyga, kto wygrał, i wypycha wynik do dataLayer
-  jako zdarzenie `aff_decision`. Pixele partnerów nasłuchują na to zdarzenie z warunkiem na zwycięzcę.
+  jako zdarzenie `aff_decision`. Pixele partnerów (AFF 04x) nasłuchują na to zdarzenie z warunkiem na zwycięzcę,
+  a AFF 06 przekazuje każdą decyzję do GA4 (`affiliate_attribution`).
 -->
 <script>
 (function () {
   var api = window.affAttribution;
-  var cfg = {{AFF - config}};
+  var cfg = {{AFF 00 - config}};
   var rawOrderId = {{DLV - ecommerce.transaction_id}};
   // Surowe ID idzie do dataLayer (łączenie z backendem w BigQuery), znormalizowane — tylko do ciasteczka.
   var orderKey = api ? api.sanitizeToken(rawOrderId) : '';

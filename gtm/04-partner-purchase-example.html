@@ -1,6 +1,6 @@
 <!--
-  GTM → Tag „Niestandardowy kod HTML”, nazwa: `Partner A - purchase` (analogicznie B, C, D, Retargeting A).
-  Wyzwalacz: `AFF - winner: partner_a` = zdarzenie `aff_decision` + `{{DLV - aff.winner}}` równa się `partner_a`.
+  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF 04a - Partner A - purchase` (analogicznie 04b, 04c… dla kolejnych partnerów).
+  Wyzwalacz: `AFF 04 - winner = partner_a` = zdarzenie `aff_decision` + `{{AFF 04 - aff.winner}}` równa się `partner_a`.
   Ustawienia zgody: „Wymagaj dodatkowej zgody” → ad_storage.
 
   Kod pixela dostarcza sieć — poniżej szkielet z typowymi polami. Trzy decyzje rozliczeniowe
@@ -14,7 +14,7 @@
   var s = document.createElement('script');
   s.src = 'https://tracking.partner-a.example/conversion.js';
   s.async = true;
-  s.setAttribute('data-order-id', {{DLV - aff.order_id}});
+  s.setAttribute('data-order-id', {{AFF 04 - aff.order_id}});
   s.setAttribute('data-amount', {{JS - order value net of shipping}});
   s.setAttribute('data-currency', {{DLV - ecommerce.currency}});
   s.setAttribute('data-event', {{LT - partner_a event by customer type}});

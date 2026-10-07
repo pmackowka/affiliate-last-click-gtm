@@ -1,6 +1,6 @@
 <!--
-  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF - 02 capture touchpoint`.
-  Wyzwalacze: `AFF - DOM Ready` ORAZ `AFF - consent update`.
+  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF 02 - capture touchpoint`.
+  Wyzwalacze: `AFF 02 - DOM Ready` ORAZ `AFF 02 - consent update`.
   Ustawienia zgody: „Wymagaj dodatkowej zgody” → ad_storage.
 
   Drugi wyzwalacz łapie częsty przypadek: klient wchodzi z linku partnera i dopiero na tej stronie
@@ -10,7 +10,7 @@
 <script>
 (function () {
   var api = window.affAttribution;
-  var cfg = {{AFF - config}};
+  var cfg = {{AFF 00 - config}};
   if (!api || !cfg) return;
   // Raz na stronę: przy zgodzie udzielonej wcześniej odpalą się oba wyzwalacze.
   if (window.__affTouchCaptured) return;

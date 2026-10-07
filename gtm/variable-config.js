@@ -1,4 +1,4 @@
-// GTM → Zmienna typu „Niestandardowy kod JavaScript”, nazwa: `AFF - config`.
+// GTM → Zmienna typu „Niestandardowy kod JavaScript”, nazwa: `AFF 00 - config`.
 // Jedyne miejsce konfiguracji mechanizmu. Wartości przykładowe — podmień domenę i listę partnerów.
 function () {
   return {
