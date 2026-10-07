@@ -74,6 +74,9 @@
 5. Kolejne Zamówienie tego samego Klienta w Oknie atrybucji, bez nowego Kliknięcia:
    - **WARIANT A:** przypisuje się Partnerowi na zasadach ust. 1–4;
    - **WARIANT B:** nie jest przypisywane — każde Zamówienie wymaga nowego Kliknięcia.
+
+   Wariant jest jednolity dla wszystkich partnerów rozliczanych przez Sklep od sprzedaży;
+   jego zmiana wymaga zmiany umów ze wszystkimi partnerami w trybie §9.
 6. Wyświetlenia reklam (*post-view*) nie są podstawą do naliczenia prowizji, niezależnie od
    danych zbieranych przez Partnera.
 7. Jedno Zamówienie może zostać przypisane najwyżej jednemu partnerowi.

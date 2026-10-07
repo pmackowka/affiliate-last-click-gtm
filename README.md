@@ -97,6 +97,16 @@ Reguły inicjowania i `purchase` mogą być istniejącymi regułami sklepu — l
 
 Bez tagu 06 decyzje nie trafią do eksportu GA4, a zapytania z `sql/` nie mają danych.
 
+**Nowy partner** — bez zmian w kodzie, tagi 01–03, 05, 06 i SQL zostają:
+
+1. `AFF 00 - config` → wpis w `partners`: `sources` (wartość `utm_source` z umowy, opcjonalnie hosty porównywarki) i `windowDays` (okno z umowy). Okno dłuższe niż `cookieMaxAgeDays` → podnieś `cookieMaxAgeDays`.
+2. Wyzwalacz `AFF 04 - winner = <id>`.
+3. Tag pixela `AFF 04x - <Partner> - purchase` z wyzwalaczem z kroku 2, zgoda `ad_storage`, ID zamówienia z `{{AFF 04 - aff.order_id}}`.
+4. BigQuery: wiersz w `partner_contracts` (stawki, wariant puli, `valid_from`).
+5. Podgląd: wejście z `?utm_source=<id>` i zakup → odpala się tylko nowy pixel.
+
+Wariant drugiego zakupu (`clearPathOnPurchase`) jest wspólny dla wszystkich partnerów — nowa umowa musi mieć ten sam wariant. Pełna mapa zapis umowy → zmiana: [`docs/contract/wdrozenie-zmian.md`](docs/contract/wdrozenie-zmian.md).
+
 Drugi wyzwalacz tagu 02 łapie wejście z linku partnera, gdy zgoda pada na tej samej stronie — GTM nie odpala wstecz tagu zablokowanego na DOM Ready. Tag 05 czyta stan z komend `gtag('consent', 'update', …)` w dataLayer; jeśli CMP ustawia zgodę szablonem GTM, sprawdź w podglądzie, że tag kasuje ciasteczka.
 
 ### Test w podglądzie (incognito)
