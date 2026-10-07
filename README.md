@@ -79,7 +79,7 @@ Wyzwalacze
 
 Tagi
 ├── AFF 01 - library               definiuje funkcje mechanizmu, niczego nie zapisuje (bez zgody)
-├── AFF 02 - capture touchpoint    zapisuje wejście klienta do ciasteczka _aff_path (ad_storage)
+├── AFF 02 - capture touchpoint    zapisuje wejście do _aff_path i odświeża ciasteczko przy każdej odsłonie (ad_storage)
 ├── AFF 03 - decide winner         przy zakupie wybiera zwycięzcę i wysyła aff_decision (ad_storage)
 ├── AFF 04a - Partner A - purchase pixel zakupu sieci, tylko gdy wygrała (ad_storage)
 ├── AFF 04x - <Partner> [N]        nowy partner: kod pixela od sieci + wyzwalacz „winner = <id>”

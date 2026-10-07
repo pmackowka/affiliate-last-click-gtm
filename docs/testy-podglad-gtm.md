@@ -87,6 +87,7 @@ const setTouch = (token, d) => document.cookie = '_aff_path=' + token + '~' +
 | E2 | `setTouch('partner_a', 31)` | `none` / `partner_window_expired` | **żaden 04** |
 | E3 | `setTouch('retargeting_a', 6)` | `retargeting_a` / `partner_last_click` | **04c** |
 | E4 | `setTouch('retargeting_a', 8)` | `none` / `partner_window_expired` | **żaden 04** |
+| E5 | `setTouch('partner_a', 10)`, potem otwórz `https://pmdata.pl/` (odsłona bez parametrów) | `partner_a` / `partner_last_click`; w DevTools → Application → Cookies `_aff_path` wygasa za 30 dni od teraz (odświeżenie pod Safari), znacznik kliknięcia bez zmian | **04a** |
 
 ## Po teście w GA4
 
@@ -95,4 +96,4 @@ DebugView → zdarzenie `affiliate_attribution` przy każdym zakupie z A–C i E
 ## Czego tu nie przetestujesz
 
 - Powrotu z bramek płatności, banków i poczty — wymagają prawdziwego referrera z tych domen; pokrywają je testy automatyczne (`npm test`, ścieżki 5, 12, 16, 17).
-- Safari ITP — skrócenie życia ciasteczka widać dopiero po dniach.
+- Safari ITP — skrócenie życia ciasteczka widać dopiero po dniach; E5 sprawdza tylko, że odświeżanie działa.
