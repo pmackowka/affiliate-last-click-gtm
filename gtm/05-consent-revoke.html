@@ -6,7 +6,7 @@
   Po odmowie albo wycofaniu zgody kasuje `_aff_path` i `_aff_tx` (Max-Age=0). Kasowanie nie jest
   przechowywaniem informacji, więc zgody nie wymaga; zostawienie ciasteczek po wycofaniu — tak.
 
-  Stan zgody czytany z komend gtag('consent', 'update', …) w dataLayer. Jeśli CMP ustawia zgodę
+  Stan zgody czytany z wpisów ['consent', 'update', …] w dataLayer (komenda zgody CMP). Jeśli CMP ustawia zgodę
   szablonem GTM (bez komend w dataLayer), funkcja zwróci '' i tag nic nie zrobi — sprawdź w podglądzie
   i w razie potrzeby zastąp warunek zmienną stanu zgody z CMP.
 -->
