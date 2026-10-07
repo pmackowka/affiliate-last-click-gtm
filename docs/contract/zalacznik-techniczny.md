@@ -97,6 +97,6 @@
 ## §9. Ograniczenia techniczne
 
 Strony przyjmują do wiadomości, że część Zamówień nie zostanie przypisana z przyczyn
-technicznych: ograniczeń przeglądarek (w Safari skuteczne okno może wynosić od 24 godzin do
-7 dni), oprogramowania blokującego reklamy lub wyrażenia Zgody marketingowej dopiero na kolejnej
+technicznych: ograniczeń przeglądarek (w Safari informacja o Kliknięciu wygasa po 7 dniach bez
+wizyty Klienta w Sklepie, a w szczególnych przypadkach po 24 godzinach), oprogramowania blokującego reklamy lub wyrażenia Zgody marketingowej dopiero na kolejnej
 stronie po wejściu z linku Partnera. Za takie Zamówienia prowizja nie przysługuje.
