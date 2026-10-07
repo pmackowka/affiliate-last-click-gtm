@@ -229,7 +229,7 @@ Testy czytają [`gtm/variable-config.js`](gtm/variable-config.js) — ten sam pl
 
 ## Ograniczenia i dalsze kroki
 
-**W skrócie:** mechanizm widzi jedną przeglądarkę na jednym urządzeniu i tylko klientów, którzy dali zgodę. Ścieżka żyje w ciasteczku, więc wszystko, co je zmienia albo omija — inne urządzenie, inna przeglądarka, tryb prywatny, wyczyszczone ciasteczka, wbudowana przeglądarka aplikacji — zrywa ją bez śladu. Taki zakup nie ma partnera albo ma błędnego: klik z telefonu i zakup z laptopa trafia do kanału, z którego klient wszedł na laptopie, a nie do partnera. Sklep traci wtedy prowizję partnera (niedopłata), a nie płaci podwójnie — deduplikacja psuje się w stronę ostrożną.
+**W skrócie:** mechanizm widzi jedną przeglądarkę na jednym urządzeniu i tylko klientów, którzy dali zgodę. Ścieżka żyje w ciasteczku, więc wszystko, co je zmienia albo omija — inne urządzenie, inna przeglądarka, tryb prywatny, wyczyszczone ciasteczka, wbudowana przeglądarka aplikacji — zrywa ją bez śladu. Taki zakup nie ma partnera albo ma błędnego: klik z telefonu i zakup z laptopa trafia do kanału, z którego klient wszedł na laptopie, a nie do partnera. Sklep nigdy nie zapłaci przez to podwójnie: najczęściej partner nie dostaje prowizji, rzadziej dostaje ją inny partner, jeśli to od niego klient wszedł na drugim urządzeniu.
 
 - **Cross-device i cross-browser** — klik na telefonie, zakup na komputerze; klik w Chrome, zakup w Safari. Bez logowania i wspólnego identyfikatora klienta nie da się tego połączyć.
 - **Przeglądarki wbudowane w aplikacje** (Instagram, Facebook, TikTok, klient poczty) mają osobne ciasteczka — klient, który kliknął w aplikacji i wrócił w zwykłej przeglądarce, jest nowy.
