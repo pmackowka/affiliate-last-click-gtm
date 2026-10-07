@@ -1,6 +1,6 @@
 <!--
-  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF - 05 consent revoke`.
-  Wyzwalacze: `AFF - DOM Ready` ORAZ `AFF - consent update`.
+  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF 05 - consent revoke`.
+  Wyzwalacze: `AFF 02 - DOM Ready` ORAZ `AFF 02 - consent update`.
   Ustawienia zgody: BEZ dodatkowej zgody — tag ma działać właśnie wtedy, gdy ad_storage = denied.
 
   Po odmowie albo wycofaniu zgody kasuje `_aff_path` i `_aff_tx` (Max-Age=0). Kasowanie nie jest
@@ -13,7 +13,7 @@
 <script>
 (function () {
   var api = window.affAttribution;
-  var cfg = {{AFF - config}};
+  var cfg = {{AFF 00 - config}};
   if (!api || !cfg) return;
   if (api.consentUpdateState(window.dataLayer, 'ad_storage') !== 'denied') return;
 

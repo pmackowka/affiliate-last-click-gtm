@@ -9,8 +9,8 @@ export function renderLibraryTag() {
   const lib = readFileSync(`${root}src/attribution.js`, 'utf8');
   return [
     '<!--',
-    '  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF - 01 library`.',
-    '  Wyzwalacz: `AFF - Initialization` (Inicjowanie — wszystkie strony).',
+    '  GTM → Tag „Niestandardowy kod HTML”, nazwa: `AFF 01 - library`.',
+    '  Wyzwalacz: `AFF 01 - Initialization` (Inicjowanie — wszystkie strony).',
     '  Ustawienia zgody: bez dodatkowej zgody — tag tylko definiuje funkcje, niczego nie zapisuje ani nie czyta.',
     '  PLIK GENEROWANY przez `npm run build` z src/attribution.js — nie edytuj ręcznie.',
     '-->',

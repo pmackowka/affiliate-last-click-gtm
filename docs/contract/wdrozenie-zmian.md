@@ -2,7 +2,7 @@
 
 Dla wdrażającego, nie dla prawnika. Każdy zapis z [`zalacznik-techniczny.md`](zalacznik-techniczny.md) ma swoje miejsce w GTM albo w BigQuery — tabela mówi gdzie.
 
-**Nazewnictwo:** nazwy encji jak w kontenerze GTM: `AFF 00 - config`, `AFF 01 - library`, `AFF 02 - capture touchpoint`, `AFF 03 - decide winner`, `AFF 04a/04b/04c` (pixele Partnera A, Partnera B, Retargetingu A), `AFF 05 - consent revoke`; wyzwalacze `AFF 02 - DOM Ready`, `AFF 02 - consent update`, `AFF 04 - winner = …`. README i pliki `gtm/*.html` używają nazw ogólnych (`AFF - config`, `AFF - 02 capture touchpoint`) — odwołanie `{{AFF - config}}` w kodzie tagów musi odpowiadać nazwie zmiennej w kontenerze.
+**Nazewnictwo:** te same nazwy w repo (README, `gtm/*.html`) i w kontenerze referencyjnym: `AFF 00 - config`, `AFF 01 - library`, `AFF 02 - capture touchpoint`, `AFF 03 - decide winner`, `AFF 04a/04b/04c` (pixele partnerów), `AFF 05 - consent revoke`, `AFF 06 - GA4 affiliate_attribution`; zmienne `AFF 04 - aff.*`; wyzwalacze `AFF 02 - DOM Ready`, `AFF 02 - consent update`, `AFF 04 - winner = …`, `AFF 06 - aff_decision`. Inicjowanie i `purchase` mogą korzystać z istniejących reguł sklepu.
 
 **Repo vs kontener:** `gtm/variable-config.js` w repo to wzorzec, na którym stoją testy. Konfiguracja konkretnego sklepu żyje w `AFF 00 - config` w kontenerze. Zmiana wzorca = `npm test` i aktualizacja ścieżek w `tests/journeys.js` oraz README.
 
@@ -25,8 +25,8 @@ Dla wdrażającego, nie dla prawnika. Każdy zapis z [`zalacznik-techniczny.md`]
 | §6 ust. 1 — waluty | `sql/02`, `sql/03` | przeliczenie kursem z umowy — **dziś brak**, kwoty w różnych walutach są sumowane razem | — |
 | §6 ust. 2 — stawki | `partner_contracts` | **nowy wiersz** z `valid_from` = data z §9; poprzedniemu wierszowi `valid_to` = dzień wcześniej. Nie nadpisuj starego wiersza | `sql/03` za miesiąc przełomu: zamówienia przed i po dacie z różnymi stawkami |
 | §6 ust. 3 — okres i termin Raportu | harmonogram uruchomień | `sql/02` → `05` → `03` → `04` po upływie okresu zwrotów; `DECLARE period_start / period_end` | `sql/05` bez nieoczekiwanych wierszy przed wysłaniem Raportu |
-| §8 ust. 2 — pola kodu śledzącego | tag `AFF 04x` | ID zamówienia (`{{DLV - aff.order_id}}`), wartość, waluta, typ klienta (tabela przeglądowa) | Podgląd: zapytanie sieci w zakładce Network zawiera ID zamówienia |
-| §8 ust. 4 — wstrzymanie kodu | tag `AFF 04x` | wstrzymaj tag (Pause), nie usuwaj; decyzje dalej trafiają do GA4 przez `AFF 03` | `aff_decision` w podglądzie, brak `AFF 04x` |
+| §8 ust. 2 — pola kodu śledzącego | tag `AFF 04x` | ID zamówienia (`{{AFF 04 - aff.order_id}}`), wartość, waluta, typ klienta (tabela przeglądowa) | Podgląd: zapytanie sieci w zakładce Network zawiera ID zamówienia |
+| §8 ust. 4 — wstrzymanie kodu | tag `AFF 04x` | wstrzymaj tag (Pause), nie usuwaj; decyzje dalej trafiają do GA4 przez `AFF 03` → `AFF 06` | `aff_decision` w podglądzie, brak `AFF 04x` |
 | Nowy partner | kontener + BigQuery | 1. wpis w `partners` (`sources`, `windowDays`); 2. wyzwalacz `AFF 04 - winner = <id>`; 3. tag pixela `AFF 04x` (zgoda `ad_storage`, ID zamówienia); 4. wiersz `partner_contracts` | pełny scenariusz z README, sekcja „Test w podglądzie” |
 | Koniec współpracy | kontener + BigQuery | `valid_to` w `partner_contracts`; wstrzymaj `AFF 04x`; wpis w `partners` zostaw do końca okna atrybucji (inaczej jego kliknięcia zaczną przerywać ścieżkę innym jako „inny kanał” — to też decyzja do podjęcia) | ostatni Raport obejmuje zamówienia do daty końca |
 | Zmiana CMP | wyzwalacz `AFF 02 - consent update` | nazwa zdarzenia, które nowy CMP pushuje po decyzji; sprawdź, czy CMP wysyła `gtag('consent', 'update', …)` do dataLayer — od tego zależy `AFF 05` | Podgląd: akceptacja na stronie wejścia → `AFF 02` odpala; wycofanie → `AFF 05` kasuje ciasteczka |

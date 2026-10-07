@@ -64,9 +64,9 @@ Od końca ścieżki, z pominięciem wyszukiwarek organicznych (klient kliknął 
 
 | Nazwa | Typ | Ustawienia |
 |---|---|---|
-| `AFF - config` | Niestandardowy JS | [`gtm/variable-config.js`](gtm/variable-config.js) — **podmień domenę, partnerów i `noCapturePaths`** |
-| `DLV - ecommerce.transaction_id`, `…currency` | Warstwa danych v2 | pola `ecommerce` |
-| `DLV - aff.order_id`, `.winner`, `.reason`, `.touch`, `.path` | Warstwa danych v2 | pola `aff` |
+| `AFF 00 - config` | Niestandardowy JS | [`gtm/variable-config.js`](gtm/variable-config.js) — **podmień domenę, partnerów i `noCapturePaths`** |
+| `AFF 04 - aff.order_id`, `.winner`, `.reason`, `.touch`, `.path` | Warstwa danych v2 | pola `aff` |
+| `DLV - ecommerce.transaction_id`, `…currency` | Warstwa danych v2 | pola `ecommerce` — jeśli sklep ma już takie zmienne, użyj istniejących |
 | `JS - order value net of shipping` | Niestandardowy JS | `value − shipping` — **tylko jeśli `value` zawiera wysyłkę**, inaczej odejmiesz ją dwa razy |
 | `LT - partner_a event by customer type` | Tabela przeglądowa | nowy / powracający klient → ID zdarzenia w sieci |
 
@@ -74,24 +74,28 @@ Od końca ścieżki, z pominięciem wyszukiwarek organicznych (klient kliknął 
 
 | Nazwa | Typ | Warunek |
 |---|---|---|
-| `AFF - Initialization` | Inicjowanie | wszystkie strony |
-| `AFF - DOM Ready` | DOM gotowy | wszystkie strony |
-| `AFF - consent update` | Zdarzenie niestandardowe | zdarzenie CMP po decyzji (np. `OneTrustGroupsUpdated`) — sprawdź w podglądzie |
-| `AFF - purchase` | Zdarzenie niestandardowe | `purchase` |
-| `AFF - decision (all)` | Zdarzenie niestandardowe | `aff_decision` |
-| `AFF - winner: partner_a` (po jednej na partnera) | Zdarzenie niestandardowe | `aff_decision` i `{{DLV - aff.winner}}` = `partner_a` |
+| `AFF 01 - Initialization` | Inicjowanie | wszystkie strony |
+| `AFF 02 - DOM Ready` | DOM gotowy | wszystkie strony |
+| `AFF 02 - consent update` | Zdarzenie niestandardowe | zdarzenie CMP po decyzji (np. `OneTrustGroupsUpdated`) — sprawdź w podglądzie |
+| `AFF 03 - purchase` | Zdarzenie niestandardowe | `purchase` |
+| `AFF 04 - winner = partner_a` (po jednej na partnera) | Zdarzenie niestandardowe | `aff_decision` i `{{AFF 04 - aff.winner}}` = `partner_a` |
+| `AFF 06 - aff_decision` | Zdarzenie niestandardowe | `aff_decision` |
+
+Reguły inicjowania i `purchase` mogą być istniejącymi regułami sklepu — liczy się typ i warunek, nie nazwa.
 
 ### Tagi
 
 | # | Nazwa | Reguła | Zgoda | Kod |
 |---|---|---|---|---|
-| 01 | `AFF - 01 library` | Initialization | bez dodatkowej | [`01-library.html`](gtm/01-library.html) (generowany) |
-| 02 | `AFF - 02 capture touchpoint` | DOM Ready **+** consent update | `ad_storage` | [`02-capture-touchpoint.html`](gtm/02-capture-touchpoint.html) |
-| 03 | `AFF - 03 decide winner` | purchase | `ad_storage` | [`03-decide-winner.html`](gtm/03-decide-winner.html) |
-| 05 | `AFF - 05 consent revoke` | DOM Ready **+** consent update | **bez dodatkowej** | [`05-consent-revoke.html`](gtm/05-consent-revoke.html) |
-| — | `Partner A - purchase` (B, C, D, Retargeting A) | winner: partner_a | `ad_storage` | szkielet: [`04-partner-purchase-example.html`](gtm/04-partner-purchase-example.html) |
-| — | `Retargeting B - purchase` | purchase (bez deduplikacji) | `ad_storage` | od sieci |
-| — | `GA4 - affiliate_attribution` | decision (all) | wbudowana GA4 | parametry `aff_order_id`, `aff_winner`, `aff_reason`, `aff_touch`, `aff_path` |
+| 01 | `AFF 01 - library` | `AFF 01 - Initialization` | bez dodatkowej | [`01-library.html`](gtm/01-library.html) (generowany) |
+| 02 | `AFF 02 - capture touchpoint` | `AFF 02 - DOM Ready` **+** `AFF 02 - consent update` | `ad_storage` | [`02-capture-touchpoint.html`](gtm/02-capture-touchpoint.html) |
+| 03 | `AFF 03 - decide winner` | `AFF 03 - purchase` | `ad_storage` | [`03-decide-winner.html`](gtm/03-decide-winner.html) |
+| 04a… | `AFF 04a - Partner A - purchase` (04b, 04c… kolejni partnerzy i Retargeting A) | `AFF 04 - winner = partner_a` | `ad_storage` | szkielet: [`04-partner-purchase-example.html`](gtm/04-partner-purchase-example.html) |
+| 05 | `AFF 05 - consent revoke` | `AFF 02 - DOM Ready` **+** `AFF 02 - consent update` | **bez dodatkowej** | [`05-consent-revoke.html`](gtm/05-consent-revoke.html) |
+| 06 | `AFF 06 - GA4 affiliate_attribution` | `AFF 06 - aff_decision` | wbudowana GA4 | zdarzenie GA4 `affiliate_attribution`, parametry `aff_order_id`, `aff_winner`, `aff_reason`, `aff_touch`, `aff_path` ← zmienne `AFF 04 - aff.*` |
+| — | `Retargeting B - purchase` | `AFF 03 - purchase` (bez deduplikacji) | `ad_storage` | od sieci |
+
+Bez tagu 06 decyzje nie trafią do eksportu GA4, a zapytania z `sql/` nie mają danych.
 
 Drugi wyzwalacz tagu 02 łapie wejście z linku partnera, gdy zgoda pada na tej samej stronie — GTM nie odpala wstecz tagu zablokowanego na DOM Ready. Tag 05 czyta stan z komend `gtag('consent', 'update', …)` w dataLayer; jeśli CMP ustawia zgodę szablonem GTM, sprawdź w podglądzie, że tag kasuje ciasteczka.
 
