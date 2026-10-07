@@ -33,7 +33,7 @@ Zakup ────────────────────────�
 partner_a~tq4k2o|organic.google~tq5b8c|partner_b~tq6x1d      token~czas (sekundy, base36)
 ```
 
-Token tylko `[a-z0-9._-]`, maks. 32 znaki. Najwyżej 10 wejść; powtórzone źródło odświeża czas; wejścia starsze niż czas życia ciasteczka wypadają.
+Token tylko `[a-z0-9._-]`, maks. 32 znaki. Najwyżej 10 wejść; powtórzone źródło odświeża czas; wejścia starsze niż czas życia ciasteczka wypadają. Ciasteczko jest zapisywane na nowo przy każdej odsłonie (limit Safari liczy się od ostatniego zapisu), a okno atrybucji — od czasu kliknięcia zapisanego w ścieżce.
 
 ### Decyzja przy zakupie
 
@@ -186,7 +186,7 @@ Kto wygrywa w jakiej ścieżce: [`tests/journeys.js`](tests/journeys.js) (18 śc
 - **Cross-device i cross-browser** — klik na telefonie, zakup na komputerze; klik w Chrome, zakup w Safari. Bez logowania i wspólnego identyfikatora klienta nie da się tego połączyć.
 - **Przeglądarki wbudowane w aplikacje** (Instagram, Facebook, TikTok, klient poczty) mają osobne ciasteczka — klient, który kliknął w aplikacji i wrócił w zwykłej przeglądarce, jest nowy.
 - **Tylko WWW** — aplikacje mobilne sklepu, telefon, marketplace i B2B są poza zasięgiem i poza rozliczeniem (`out_of_scope`).
-- **Safari (ITP)** skraca życie ciasteczka z JavaScriptu do 7 dni, przy linkach z parametrami śledzącymi do 24 h — część zakupów z oknem 30 dni wypadnie.
+- **Safari (ITP)** przycina ciasteczka zapisywane z JavaScriptu — także `_aff_path` we własnej domenie — do 7 dni od ostatniego zapisu, a po wejściu z linku z parametrami z domeny uznanej za śledzącą do 24 h. Tag 02 odświeża ciasteczko przy każdej odsłonie, więc ścieżka przetrwa, dopóki klient wraca co najmniej raz na 7 dni; klient, który wróci po 8 dniach przerwy, przepada. Pełne 30 dni daje dopiero ciasteczko z serwera (sGTM pod tym samym IP co strona).
 - **Zgoda** — bez `ad_storage` nie ma ścieżki ani prowizji; wejście sprzed zgody na innej stronie niż strona zgody przepada.
 - **Adblockery** blokują GTM albo GA4 — decyzja nie dociera do BigQuery i zamówienie jest bez prowizji, choć pixel sieci mógł się odpalić. Rozbieżność wychodzi przy porównaniu z raportem sieci.
 - **Następna iteracja: server-side GTM** — ciasteczko z nagłówka HTTP (dłuższe życie w Safari), decyzja i wysyłka do sieci po stronie serwera. Cross-device to nie rozwiąże; rozwiązuje je dopiero identyfikator zalogowanego klienta.

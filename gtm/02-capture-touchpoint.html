@@ -6,6 +6,10 @@
   Drugi wyzwalacz łapie częsty przypadek: klient wchodzi z linku partnera i dopiero na tej stronie
   klika „Akceptuję”. GTM nie odpala wstecz tagu zablokowanego na DOM Ready, więc bez wyzwalacza
   zgody wejście z pierwszej strony przepadłoby.
+
+  Ciasteczko jest zapisywane na nowo przy każdej odsłonie, także bez nowego wejścia: Safari (ITP)
+  liczy limit życia ciasteczek z JavaScriptu (7 dni, 24 h po linku z parametrami z domeny
+  śledzącej) od ostatniego zapisu. Okno atrybucji liczy się dalej od czasu kliknięcia w ścieżce.
 -->
 <script>
 (function () {
@@ -17,11 +21,11 @@
   window.__affTouchCaptured = true;
 
   var touch = api.classifyLanding({ pathname: location.pathname, search: location.search, referrer: document.referrer }, cfg);
-  if (!touch) return;
-
   var now = Math.floor(new Date().getTime() / 1000);
   var path = api.parsePath(api.readCookie(document, cfg.cookieName));
-  path = api.appendTouch(path, touch.token, now, cfg);
+  // Bez nowego wejścia: tylko odświeżenie zapisu (limit Safari liczy się od ostatniego zapisu).
+  path = touch ? api.appendTouch(path, touch.token, now, cfg) : api.prunePath(path, now, cfg);
+  if (!path.length) return;
   api.writeCookie(document, cfg.cookieName, api.serializePath(path), cfg.cookieMaxAgeDays, cfg,
     location.protocol === 'https:');
 })();

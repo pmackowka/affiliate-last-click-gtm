@@ -87,6 +87,12 @@ test('consentUpdateState czyta ostatnią komendę update i pomija default', () =
   assert.equal(api.consentUpdateState(undefined, 'ad_storage'), '');
 });
 
+test('prunePath odświeża ścieżkę bez dopisywania i usuwa wejścia starsze niż czas życia', () => {
+  const p = api.appendTouch([], 'partner_a', T0, cfg);
+  assert.deepEqual(api.prunePath(p, T0 + 5 * DAY, cfg), p);
+  assert.deepEqual(api.prunePath(p, T0 + (cfg.cookieMaxAgeDays + 1) * DAY, cfg), []);
+});
+
 test('uszkodzone ciasteczko nie wywraca parsera', () => {
   assert.deepEqual(api.parsePath('partner_a~|~zz|;;|partner_b~1a2b3c'), [{ t: 'partner_b', ts: parseInt('1a2b3c', 36) }]);
 });
