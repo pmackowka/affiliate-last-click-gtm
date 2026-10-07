@@ -102,14 +102,16 @@ Bez tagu 06 decyzje nie trafią do eksportu GA4, a zapytania z `sql/` nie mają 
 1. `AFF 00 - config` → wpis w `partners`: `sources` (wartość `utm_source` z umowy, opcjonalnie hosty porównywarki) i `windowDays` (okno z umowy). Okno dłuższe niż `cookieMaxAgeDays` → podnieś `cookieMaxAgeDays`.
 2. Wyzwalacz `AFF 04 - winner = <id>`.
 3. Tag pixela `AFF 04x - <Partner> - purchase` z wyzwalaczem z kroku 2, zgoda `ad_storage`, ID zamówienia z `{{AFF 04 - aff.order_id}}`.
-4. BigQuery: wiersz w `partner_contracts` (stawki, wariant puli, `valid_from`).
+4. BigQuery: wiersz w `partner_contracts` (stawki, `valid_from`).
 5. Podgląd: wejście z `?utm_source=<id>` i zakup → odpala się tylko nowy pixel.
 
-Wariant drugiego zakupu (`clearPathOnPurchase`) jest wspólny dla wszystkich partnerów — nowa umowa musi mieć ten sam wariant. Pełna mapa zapis umowy → zmiana: [`docs/contract/wdrozenie-zmian.md`](docs/contract/wdrozenie-zmian.md).
+Zasada drugiego zakupu (`clearPathOnPurchase: false` — kolejny zakup w oknie idzie do partnera) jest wspólna dla wszystkich partnerów. Pełna mapa zapis umowy → zmiana: [`docs/contract/wdrozenie-zmian.md`](docs/contract/wdrozenie-zmian.md).
 
 Drugi wyzwalacz tagu 02 łapie wejście z linku partnera, gdy zgoda pada na tej samej stronie — GTM nie odpala wstecz tagu zablokowanego na DOM Ready. Tag 05 czyta stan z komend `gtag('consent', 'update', …)` w dataLayer; jeśli CMP ustawia zgodę szablonem GTM, sprawdź w podglądzie, że tag kasuje ciasteczka.
 
 ### Test w podglądzie (incognito)
+
+Pełny zestaw scenariuszy z gotowymi adresami i wynikiem oczekiwanym: [`docs/testy-podglad-gtm.md`](docs/testy-podglad-gtm.md).
 
 1. `?utm_source=partner_a`, **odrzuć zgodę** → brak `_aff_path`.
 2. `?utm_source=partner_a`, **zaakceptuj na tej samej stronie** → `partner_a~…`.
@@ -158,21 +160,11 @@ Mechanizm widzi tylko kliknięcia. Sieć liczącą **post-view** zobowiąż w um
 
 ## Rozliczenia bez zgody
 
-Założenie: wysoki odsetek zgód (> 90%), sklep nie przypisuje zamówień kodami rabatowymi. Jedno zamówienie = jedna metoda:
+Założenie: wysoki odsetek zgód (> 90%). Prowizja przysługuje tylko za zamówienia z decyzją tagu, która wskazuje partnera. Zamówienie bez zgody (brak decyzji) = brak prowizji; rekompensuje to stawka podstawowa w umowie. Kody rabatowe nie przypisują zamówień.
 
-1. **Jest decyzja z tagu** (zgoda przy zakupie) → ciasteczko last click, także „nikt”, gdy ciasteczko było puste.
-2. **Brak decyzji** → pula modelowana albo brak prowizji (wariant w umowie).
+Atrybucja obejmuje tylko sklep WWW (`orders.sales_channel = 'web'`); aplikacja, telefon, marketplace i B2B są poza rozliczeniem (`out_of_scope`).
 
-Atrybucja i pula obejmują tylko sklep WWW (`orders.sales_channel = 'web'`); aplikacja, telefon, marketplace i B2B są poza rozliczeniem (`out_of_scope`) — udział partnera liczony z WWW nie przenosi się na inne kanały.
-
-```text
-udział partnera = sprzedaż partnera (z decyzją) / cała sprzedaż WWW z decyzją
-prowizja z puli = MIN(udział × sprzedaż WWW bez decyzji × stawka modelowana, limit miesięczny)
-```
-
-Mianownik obejmuje zamówienia z decyzją bez zwycięzcy — inaczej pula szłaby w 100% do partnerów.
-
-**W umowie:** stawka modelowana niższa od podstawowej (50–70%), miesięczny limit, comiesięczny raport udziału zgód, okno i model (last click, post-click) w dniach, kody rabatowe nie są podstawą przypisania, zwroty pomniejszają podstawę, podstawa bez wysyłki, pixele sieci tylko przy zgodzie. Przy > 90% zgód pula jest mała — prostsza alternatywa to brak prowizji bez zgody w zamian za wyższą stawkę.
+**W umowie:** okno i model (last click, post-click) w dniach, zakaz cookie stuffingu i brand biddingu, podstawa bez wysyłki pomniejszona o zwroty, pixele sieci tylko przy zgodzie, brak prowizji bez decyzji atrybucji.
 
 Draft sekcji technicznej umowy: [`docs/contract/zalacznik-techniczny.md`](docs/contract/zalacznik-techniczny.md). Gdzie wdrożyć każdy zapis (GTM, BigQuery): [`docs/contract/wdrozenie-zmian.md`](docs/contract/wdrozenie-zmian.md).
 
@@ -183,9 +175,8 @@ Draft sekcji technicznej umowy: [`docs/contract/zalacznik-techniczny.md`](docs/c
 | Plik | Co robi |
 |---|---|
 | [`01_tables.sql`](sql/01_tables.sql) | tabele: zamówienia (z kanałem sprzedaży), umowy, wynik atrybucji (raz) |
-| [`02_order_attribution.sql`](sql/02_order_attribution.sql) | przypisanie zamówień okresu: ciasteczko → pula, kanały spoza WWW poza zakresem |
+| [`02_order_attribution.sql`](sql/02_order_attribution.sql) | przypisanie zamówień okresu z decyzji tagu, kanały spoza WWW poza zakresem |
 | [`03_settlement.sql`](sql/03_settlement.sql) | prowizje per partner i metoda |
-| [`04_modelled_share.sql`](sql/04_modelled_share.sql) | podział puli bez zgody z limitem |
 | [`05_qa_checks.sql`](sql/05_qa_checks.sql) | pokrycie decyzjami, zamówienia bez pary, rozkład powodów |
 
 Podmień `your-project`, `affiliate`, `analytics_123456789` i daty w `DECLARE`. Zapytania nie były uruchomione na danych — zacznij od dry-runu.
@@ -203,6 +194,6 @@ Testy czytają [`gtm/variable-config.js`](gtm/variable-config.js) — ten sam pl
 
 - **Safari (ITP)** skraca życie ciasteczka z JavaScriptu do 7 dni, przy linkach z parametrami śledzącymi do 24 h — część zakupów z oknem 30 dni wypadnie.
 - **Wejście sprzed zgody na innej stronie** niż strona zgody przepada — nie wolno go było zapisać.
-- **Adblockery** blokują pixele, a czasem GTM — zamówienie bez decyzji trafia do puli albo bez prowizji.
+- **Adblockery** blokują pixele, a czasem GTM — zamówienie bez decyzji jest bez prowizji.
 - **Aplikacje mobilne**, telefon, marketplace i B2B są poza zasięgiem i poza rozliczeniem (`out_of_scope`).
 - **Następna iteracja: server-side GTM** — ciasteczko z nagłówka HTTP, decyzja i wysyłka do sieci po stronie serwera.

@@ -5,7 +5,7 @@
 --   1. kanał inny niż web                          → out_of_scope (poza atrybucją i pulą),
 --   2. jest decyzja z tagu (była zgoda ad_storage) → wynik ciasteczka, także „nikt z partnerów”
 --      (w tym no_touchpoints i only_navigational — zgoda była, kliknięcia partnera brak),
---   3. brak decyzji                                → unattributed (pula do modelu, skrypt 04).
+--   3. brak decyzji                                → unattributed (brak zgody = brak prowizji).
 -- Kody rabatowe nie są metodą przypisania — sklep ich nie używa w programie partnerskim.
 
 DECLARE period_start DATE DEFAULT DATE '2026-09-01';
