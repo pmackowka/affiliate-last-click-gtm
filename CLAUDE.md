@@ -4,7 +4,7 @@ Kontekst projektu dla kolejnych sesji. Pełny opis mechanizmu, konfiguracji GTM 
 
 ## Co to jest
 
-Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu last click, po stronie klienta w GTM, tylko przy zgodzie `ad_storage`. Do tego model rozliczeń bez zgody (pula modelowana, tylko sklep WWW; kody rabatowe nie są metodą przypisania) i zapytania BigQuery do rozliczeń miesięcznych. Repozytorium prywatne na GitHubie (`affiliate-last-click-gtm`).
+Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu last click, po stronie klienta w GTM, tylko przy zgodzie `ad_storage`. Do tego zasady rozliczeń (bez zgody = bez prowizji, tylko sklep WWW, kody rabatowe nie przypisują zamówień) i zapytania BigQuery do rozliczeń miesięcznych. Repozytorium prywatne na GitHubie (`affiliate-last-click-gtm`).
 
 ## Komendy
 

@@ -1,5 +1,5 @@
 -- Rozliczenie z partnerami za okres: zamówienia przypisane ciasteczkiem (last click).
--- Pula bez zgody (modelowana) jest osobno, w 04 — żeby w raporcie było widać, z czego wynika kwota.
+-- Zamówienia bez decyzji (brak zgody) nie są rozliczane — umowa rekompensuje to stawką podstawową.
 
 DECLARE period_start DATE DEFAULT DATE '2026-09-01';
 DECLARE period_end   DATE DEFAULT DATE '2026-09-30';

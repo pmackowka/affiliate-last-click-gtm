@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `your-project.affiliate.orders` (
   shipping         NUMERIC   NOT NULL,
   currency         STRING    NOT NULL,
   is_new_customer  BOOL      NOT NULL,
-  sales_channel    STRING    NOT NULL,  -- web | app | phone | marketplace | b2b — do atrybucji i puli wchodzi tylko web
+  sales_channel    STRING    NOT NULL,  -- web | app | phone | marketplace | b2b — do atrybucji wchodzi tylko web
   status           STRING    NOT NULL,  -- paid | cancelled | returned | partially_returned
   returned_amount  NUMERIC              -- kwota zwrotu brutto bez wysyłki
 );
@@ -21,13 +21,10 @@ CREATE TABLE IF NOT EXISTS `your-project.affiliate.partner_contracts` (
   valid_from              DATE    NOT NULL,
   valid_to                DATE,
   rate_new                NUMERIC NOT NULL,  -- np. 0.08 = 8% od podstawy, nowy klient
-  rate_returning          NUMERIC NOT NULL,  -- powracający klient
-  modelled_share_enabled  BOOL    NOT NULL,  -- czy umowa przewiduje udział w puli bez zgody
-  modelled_rate           NUMERIC,           -- stawka dla puli modelowanej (zwykle niższa)
-  modelled_cap            NUMERIC            -- miesięczny limit prowizji z puli, w walucie rozliczenia
+  rate_returning          NUMERIC NOT NULL   -- powracający klient
 );
 
--- Wynik atrybucji per zamówienie — budowany skryptem 02, czytany przez 03, 04 i 05.
+-- Wynik atrybucji per zamówienie — budowany skryptem 02, czytany przez 03 i 05.
 CREATE TABLE IF NOT EXISTS `your-project.affiliate.order_attribution` (
   order_id          STRING  NOT NULL,
   order_date        DATE    NOT NULL,
@@ -35,7 +32,7 @@ CREATE TABLE IF NOT EXISTS `your-project.affiliate.order_attribution` (
   commission_base   NUMERIC NOT NULL,  -- przychód − wysyłka − zwroty
   partner_id        STRING,            -- NULL = nikt z partnerów
   method            STRING  NOT NULL,  -- cookie_last_click | cookie_no_partner | unattributed | out_of_scope
-  decision_reason   STRING,            -- powód z tagu AFF - 03 (gdy była zgoda)
+  decision_reason   STRING,            -- powód z tagu AFF 03 (gdy była zgoda)
   decision_path     STRING
 )
 PARTITION BY order_date;
