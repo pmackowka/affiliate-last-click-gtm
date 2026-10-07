@@ -222,7 +222,7 @@
   }
 
   /*
-   * Ostatnia decyzja użytkownika z komend gtag('consent', 'update', {...}) w dataLayer: 'granted', 'denied' albo ''.
+   * Ostatnia decyzja użytkownika z wpisów ['consent', 'update', {...}] w dataLayer (komenda zgody CMP): 'granted', 'denied' albo ''.
    * Komendy 'default' są pomijane celowo — przed odpowiedzią CMP default to zwykle 'denied',
    * a skasowanie ciasteczka na tej podstawie wymazałoby ścieżkę klientom, którzy zgodę dali.
    * '' = brak sygnału (np. CMP ustawia zgodę szablonem GTM, bez komend w dataLayer).
