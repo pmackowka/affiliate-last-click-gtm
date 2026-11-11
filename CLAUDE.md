@@ -4,7 +4,7 @@ Kontekst projektu dla kolejnych sesji. Pełny opis mechanizmu, konfiguracji GTM 
 
 ## Co to jest
 
-Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu last click, po stronie klienta w GTM, tylko przy zgodzie `ad_storage`. Do tego zasady rozliczeń (bez zgody = bez prowizji, tylko sklep WWW, kody rabatowe nie przypisują zamówień) i zapytania BigQuery do rozliczeń miesięcznych. Repozytorium prywatne na GitHubie (`affiliate-last-click-gtm`).
+Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu last click, po stronie klienta w GTM, tylko przy zgodzie `ad_storage`. Do tego zasady rozliczeń (bez zgody = bez prowizji, tylko sklep WWW, kody rabatowe nie przypisują zamówień) i zapytania BigQuery do rozliczeń miesięcznych. Repozytorium publiczne na GitHubie (`pmackowka/affiliate-last-click-gtm`, MIT).
 
 ## Komendy
 
@@ -21,7 +21,7 @@ Test pilnuje, że `gtm/01-library.html` jest zgodny z `src/attribution.js` — b
 - `gtm/variable-config.js` — jedyne miejsce konfiguracji (domena, partnerzy, okna atrybucji, źródła przezroczyste). Testy czytają ten plik, nie kopię.
 - `gtm/0X-*.html` — tagi do wklejenia. Każdy tag czytający lub zapisujący ciasteczko wymaga zgody `ad_storage`; wyjątek: 05 kasuje ciasteczka po wycofaniu zgody i działa bez niej.
 - `docs/contract/` — `zalacznik-techniczny.md` (draft sekcji technicznej umowy z partnerem, dla prawnika) i `wdrozenie-zmian.md` (zapis umowy → miejsce w GTM/BigQuery). **Zmiana logiki lub konfiguracji = sprawdź, czy oba pliki dalej się zgadzają.**
-- Nazwy encji GTM: `AFF NN - …` (np. `AFF 00 - config`, `AFF 03 - decide winner`, `AFF 06 - GA4 affiliate_attribution`) — te same w README, `gtm/*.html` i kontenerze referencyjnym. Zmiana nazwy zmiennej = zmiana odwołań `{{…}}` w kodzie tagów.
+- Nazwy encji GTM: `AFF NN - …` (np. `AFF 00 - config`, `AFF 03 - decide winner`, `AFF 06 - GA4 affiliate_attribution`) — te same w README, `gtm/*.html` i w kontenerze GTM. Zmiana nazwy zmiennej = zmiana odwołań `{{…}}` w kodzie tagów.
 - `tests/journeys.js` — ścieżki klientów (jedyne źródło, README do nich linkuje). Zmiana logiki = sprawdź też wyniki oczekiwane w `docs/testy-podglad-gtm.md`.
 - `sql/` — BigQuery; placeholdery `your-project`, `affiliate`, `analytics_123456789`. **Zapytania nie były uruchomione na danych** — przy pierwszym użyciu zrób dry-run.
 - Nazwy w przykładach: `partner_a…partner_d`, `retargeting_a` (CPS post-click, w deduplikacji), `retargeting_b` (CPC/CPM, poza deduplikacją), domena `example-shop.pl`.
