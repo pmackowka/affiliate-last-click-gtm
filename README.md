@@ -1,5 +1,7 @@
 # affiliate-last-click-gtm
 
+[![CI](https://github.com/pmackowka/affiliate-last-click-gtm/actions/workflows/ci.yml/badge.svg)](https://github.com/pmackowka/affiliate-last-click-gtm/actions/workflows/ci.yml)
+
 Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu **last click**, po stronie klienta w Google Tag Manager, **tylko przy zgodzie `ad_storage`**. Do tego zapytania BigQuery do rozliczenia miesięcznego, draft załącznika do umowy i scenariusze testów.
 
 **Problem:** klient przed zakupem przechodzi przez kilka sieci afiliacyjnych, porównywarek i reklam. Jeśli każda sieć dostanie pixel zakupu, każda policzy prowizję od tego samego zamówienia. Mechanizm zapisuje ścieżkę wejść i wysyła pixel **tylko do sieci, która przyprowadziła klienta jako ostatnia**.
