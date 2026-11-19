@@ -49,6 +49,8 @@ Od końca ścieżki, z pominięciem wyszukiwarek organicznych (klient kliknął 
 | same organiczne / brak ciasteczka | nikt | `only_navigational` / `no_touchpoints` |
 | to samo zamówienie drugi raz | nikt | `duplicate_transaction` |
 
+Diagram sekwencji UML całego przepływu: [`uml-diagram.md`](uml-diagram.md).
+
 ## Zgoda i przepisy
 
 > Opis założeń, nie opinia prawna.
