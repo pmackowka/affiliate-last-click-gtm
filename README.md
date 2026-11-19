@@ -1,6 +1,6 @@
 # affiliate-last-click-gtm
 
-[![CI](https://github.com/pmackowka/affiliate-last-click-gtm/actions/workflows/ci.yml/badge.svg)](https://github.com/pmackowka/affiliate-last-click-gtm/actions/workflows/ci.yml)
+[![CI](https://github.com/pmackowka/affiliate-last-click-gtm/actions/workflows/ci.yml/badge.svg)](https://github.com/pmackowka/affiliate-last-click-gtm/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/github/license/pmackowka/affiliate-last-click-gtm)](LICENSE)
 
 Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu **last click**, po stronie klienta w Google Tag Manager, **tylko przy zgodzie `ad_storage`**. Do tego zapytania BigQuery do rozliczenia miesięcznego, draft załącznika do umowy i scenariusze testów.
 
