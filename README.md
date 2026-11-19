@@ -8,12 +8,7 @@ Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu **la
 
 ## Jak to działa
 
-```text
-Wejście ─► klasyfikacja źródła ─► dopisanie do _aff_path                    (przy zgodzie)
-Zakup ───────────────────────────► decyzja: kto ostatni? ─► aff_decision w dataLayer
-                                                              ├─► pixel zwycięzcy
-                                                              └─► GA4: affiliate_attribution
-```
+Diagram sekwencji UML całego przepływu: [`uml-diagram.md`](uml-diagram.md).
 
 ### Klasyfikacja wejścia
 
@@ -48,8 +43,6 @@ Od końca ścieżki, z pominięciem wyszukiwarek organicznych (klient kliknął 
 | źródło spoza listy partnerów | nikt | `non_partner_last_click` |
 | same organiczne / brak ciasteczka | nikt | `only_navigational` / `no_touchpoints` |
 | to samo zamówienie drugi raz | nikt | `duplicate_transaction` |
-
-Diagram sekwencji UML całego przepływu: [`uml-diagram.md`](uml-diagram.md).
 
 ## Zgoda i przepisy
 
