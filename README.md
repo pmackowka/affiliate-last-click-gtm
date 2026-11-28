@@ -10,6 +10,20 @@ Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu **la
 
 Diagram sekwencji UML całego przepływu: [`uml-diagram.md`](uml-diagram.md).
 
+### Przykład: jedno zamówienie
+
+Fikcyjne zamówienie `EXAMPLE-1001`, nowy klient, zgoda `ad_storage` od pierwszego wejścia.
+
+| Etap | Wynik |
+|---|---|
+| wejście z linku Partnera A, 2 dni później z linku Partnera B | ścieżka `partner_a`, `partner_b` ([ścieżka 2](tests/journeys.js)) |
+| zakup 10.09.2026 | wygrywa `partner_b`, pixel zakupu dostaje tylko jego sieć |
+| backend: 250 PLN, w tym 20 PLN wysyłki, potem zwrot 80 PLN | podstawa: 250 − 20 − 80 = **150 PLN** |
+| stawka Partnera B dla nowego klienta: 8%, od 15.09.2026 10% | prowizja wg stawki z dnia zakupu: 150 × 8% = **12 PLN** |
+
+- `npm test` sprawdza kod JS na 18 ścieżkach i w testach jednostkowych oraz zgodność biblioteki GTM ([`01-library.html`](gtm/01-library.html)) ze źródłem; SQL nie uruchamia.
+- Kwoty liczy SQL: [pliki i stan weryfikacji](#bigquery) — to zamówienie jest jednym z fikcyjnych w `npm run check:sql`, bez testu na prawdziwych danych.
+
 ### Klasyfikacja wejścia
 
 | # | Sygnał | Token | Przykład |
