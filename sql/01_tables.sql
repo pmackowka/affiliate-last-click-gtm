@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS `your-project.affiliate.order_attribution` (
   order_date        DATE    NOT NULL,
   is_new_customer   BOOL    NOT NULL,
   commission_base   NUMERIC NOT NULL,  -- przychód − wysyłka − zwroty
+  currency          STRING  NOT NULL,  -- waluta podstawy, z zamówienia w backendzie
   partner_id        STRING,            -- NULL = nikt z partnerów
   method            STRING  NOT NULL,  -- cookie_last_click | cookie_no_partner | unattributed | out_of_scope
   decision_reason   STRING,            -- powód z tagu AFF 03 (gdy była zgoda)

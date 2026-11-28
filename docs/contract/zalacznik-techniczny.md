@@ -65,7 +65,8 @@
    Klienta]`, ocenianego na chwilę Zamówienia).
 3. Okresem rozliczeniowym jest miesiąc według daty Zamówienia. Sklep przekazuje Raport do
    `[10.]` dnia `[drugiego]` miesiąca po okresie (po upływie terminu zwrotów). Raport zawiera dla
-   każdego Zamówienia: ID, datę, Podstawę prowizji, typ Klienta i powód przypisania.
+   każdego Zamówienia: ID, datę, Podstawę prowizji i jej walutę, typ Klienta i powód
+   przypisania. Sumy Podstawy prowizji i prowizji Raport podaje osobno dla każdej waluty.
 4. Raport sporządza się według §3–§5 na podstawie danych Sklepu. Brak reklamacji w terminie z §8
    oznacza akceptację Raportu jako podstawy faktury.
 

@@ -44,6 +44,7 @@ orders AS (
     DATE(order_ts, tz) AS order_date,
     is_new_customer,
     sales_channel,
+    currency,
     revenue - shipping - IFNULL(returned_amount, 0) AS commission_base
   FROM `your-project.affiliate.orders`
   WHERE DATE(order_ts, tz) BETWEEN period_start AND period_end
@@ -55,6 +56,7 @@ SELECT
   o.order_date,
   o.is_new_customer,
   GREATEST(o.commission_base, 0) AS commission_base,
+  o.currency,
   IF(o.sales_channel = 'web' AND d.order_id IS NOT NULL, NULLIF(d.winner, 'none'), NULL) AS partner_id,
   CASE
     WHEN o.sales_channel != 'web'                      THEN 'out_of_scope'

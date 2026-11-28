@@ -160,15 +160,20 @@ Prowizja tylko za zamówienia z decyzją tagu wskazującą partnera; bez zgody n
 |---|---|
 | [`01_tables.sql`](sql/01_tables.sql) | tabele: zamówienia (z kanałem sprzedaży), umowy, wynik atrybucji (raz) |
 | [`02_order_attribution.sql`](sql/02_order_attribution.sql) | przypisanie zamówień okresu z decyzji tagu, kanały spoza WWW poza zakresem |
-| [`03_settlement.sql`](sql/03_settlement.sql) | prowizje per partner i metoda |
+| [`03_settlement.sql`](sql/03_settlement.sql) | prowizje per partner, waluta i metoda |
 | [`05_qa_checks.sql`](sql/05_qa_checks.sql) | pokrycie decyzjami, zamówienia bez pary, rozkład powodów |
 
-Podmień `your-project`, `affiliate`, `analytics_123456789` i daty w `DECLARE`. Zapytania nie były uruchomione na danych — zacznij od dry-runu.
+Podmień `your-project`, `affiliate`, `analytics_123456789` i daty w `DECLARE`.
+
+Rozliczenie grupuje kwoty po walucie zamiast odrzucać okres z mieszanymi walutami, bo oba warianty wymagają tej samej nowej kolumny w `order_attribution`, a grupowanie nie potrzebuje dodatkowej obsługi błędu.
+
+**Stan weryfikacji:** `npm run check:sql` składa jeden skrypt BigQuery z plików 01–03 i uruchamia go na trzech fikcyjnych zamówieniach w tabelach tymczasowych (wymaga zalogowanego `bq`, działa też w sandboxie bez billingu). Sprawdza podstawę po zwrocie, stawkę z dnia zamówienia i osobne wiersze dla PLN i EUR. Kontrola pomija `DELETE`, zapis przez `INSERT` i filtr dat `_TABLE_SUFFIX`. Plik 05 nie był uruchomiony, a żadne z zapytań nie działało na prawdziwych danych — przed pierwszym rozliczeniem zrób dry-run na swoich tabelach.
 
 ## Testy
 
 ```bash
 npm test        # 18 ścieżek klientów + testy jednostkowe (Node ≥ 20, zero zależności)
+npm run check:sql  # rozliczenie SQL na fikcyjnych zamówieniach (wymaga bq; poza CI)
 npm run build   # po zmianie src/attribution.js — odbudowuje gtm/01-library.html
 ```
 

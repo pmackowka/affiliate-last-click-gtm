@@ -6,6 +6,7 @@ DECLARE period_end   DATE DEFAULT DATE '2026-09-30';
 
 SELECT
   a.partner_id,
+  a.currency,                                -- kwoty w różnych walutach to osobne wiersze
   a.method,
   COUNT(*)                                   AS orders,
   COUNTIF(a.is_new_customer)                 AS orders_new_customers,
@@ -18,5 +19,5 @@ JOIN `your-project.affiliate.partner_contracts` k
  AND a.order_date BETWEEN k.valid_from AND IFNULL(k.valid_to, DATE '9999-12-31')
 WHERE a.order_date BETWEEN period_start AND period_end
   AND a.method = 'cookie_last_click'
-GROUP BY a.partner_id, a.method
-ORDER BY a.partner_id, a.method;
+GROUP BY a.partner_id, a.currency, a.method
+ORDER BY a.partner_id, a.currency, a.method;

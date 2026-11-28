@@ -11,6 +11,7 @@ Deduplikacja konwersji partnerów rozliczanych od sprzedaży (CPS) w modelu last
 ```bash
 npm test        # 18 ścieżek z README + testy jednostkowe, Node ≥ 20, zero zależności
 npm run build   # po każdej zmianie src/attribution.js — odbudowuje gtm/01-library.html
+npm run check:sql  # po każdej zmianie sql/01–03; wymaga zalogowanego bq, nie działa w CI
 ```
 
 Test pilnuje, że `gtm/01-library.html` jest zgodny z `src/attribution.js` — bez `npm run build` test pada.
@@ -23,7 +24,7 @@ Test pilnuje, że `gtm/01-library.html` jest zgodny z `src/attribution.js` — b
 - `docs/contract/` — `zalacznik-techniczny.md` (draft sekcji technicznej umowy z partnerem, dla prawnika) i `wdrozenie-zmian.md` (zapis umowy → miejsce w GTM/BigQuery). **Zmiana logiki lub konfiguracji = sprawdź, czy oba pliki dalej się zgadzają.**
 - Nazwy encji GTM: `AFF NN - …` (np. `AFF 00 - config`, `AFF 03 - decide winner`, `AFF 06 - GA4 affiliate_attribution`) — te same w README, `gtm/*.html` i w kontenerze GTM. Zmiana nazwy zmiennej = zmiana odwołań `{{…}}` w kodzie tagów.
 - `tests/journeys.js` — ścieżki klientów (jedyne źródło, README do nich linkuje). Zmiana logiki = sprawdź też wyniki oczekiwane w `docs/testy-podglad-gtm.md`.
-- `sql/` — BigQuery; placeholdery `your-project`, `affiliate`, `analytics_123456789`. **Zapytania nie były uruchomione na danych** — przy pierwszym użyciu zrób dry-run.
+- `sql/` — BigQuery; placeholdery `your-project`, `affiliate`, `analytics_123456789`. 01–03 przechodzą `npm run check:sql` (fikcyjne zamówienia w tabelach tymczasowych, bez `DELETE`, `INSERT` i `_TABLE_SUFFIX`). **05 nie był uruchomiony, a na prawdziwych danych żadne zapytanie** — przy pierwszym użyciu zrób dry-run.
 - Nazwy w przykładach: `partner_a…partner_d`, `retargeting_a` (CPS post-click, w deduplikacji), `retargeting_b` (CPC/CPM, poza deduplikacją), domena `example-shop.pl`.
 - Kod i nazwy po angielsku, komentarze i dokumentacja po polsku.
 
